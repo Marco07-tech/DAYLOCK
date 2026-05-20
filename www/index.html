@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0b0b0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="fitforge">
+  <meta name="description" content="FORGE Fitness App — Dashboard, Workout Planner, and Pedometer">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23b8ff57' width='180' height='180'/><text x='50%' y='50%' font-size='80' font-weight='900' text-anchor='middle' dominant-baseline='middle' fill='%230b0b0b' font-family='Arial'>F</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%230b0b0b' width='192' height='192'/><rect fill='%23b8ff57' x='48' y='48' width='96' height='96'/></svg>">
+  <title>fitforge</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;600;700;900&display=swap');
+
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+
+    :root {
+      --bg: #0b0b0b;
+      --surface: #141414;
+      --surface2: #1c1c1c;
+      --border: #252525;
+      --border2: #2e2e2e;
+      --accent: #b8ff57;
+      --accent-dim: rgba(184,255,87,0.08);
+      --accent-dim2: rgba(184,255,87,0.15);
+      --text: #f0f0f0;
+      --muted: #606060;
+      --muted2: #888;
+      --red: #ff5252;
+      --mono: 'Space Mono', monospace;
+      --display: 'Barlow Condensed', sans-serif;
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+    }
+
+    #forge-root {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .screen { 
+      display: none; 
+      flex-direction: column; 
+      flex: 1; 
+      overflow-y: auto; 
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px; 
+      padding-top: calc(16px + var(--safe-top));
+      padding-bottom: calc(80px + var(--safe-bottom));
+    }
+    .screen.active { display: flex; }
+
+    /* TAB BAR */
+    .tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(64px + var(--safe-bottom));
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      padding-bottom: var(--safe-bottom);
+    }
+
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      padding: 8px 0;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .tab-btn .tab-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active .tab-icon { 
+      background: var(--accent); 
+      color: #0b0b0b; 
+    }
+
+    .tab-btn.active { 
+      color: var(--accent); 
+    }
+
+    /* TYPOGRAPHY */
+    .screen-title { 
+      font-family: var(--display); 
+      font-size: 36px; 
+      font-weight: 900; 
+      letter-spacing: -1px; 
+      color: var(--text); 
+      margin-bottom: 4px; 
+      line-height: 1; 
+    }
+
+    .quote-bar { 
+      font-size: 10px; 
+      color: var(--accent); 
+      line-height: 1.5; 
+      letter-spacing: 0.3px; 
+      margin-bottom: 20px; 
+      padding-left: 8px; 
+      border-left: 2px solid var(--accent); 
+    }
+
+    /* STAT GRID */
+    .stat-grid { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr; 
+      gap: 8px; 
+      margin-bottom: 16px; 
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+      active: true;
+    }
+
+    .stat-card::after { 
+      content: ''; 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      right: 0; 
+      height: 2px; 
+      background: var(--accent); 
+      transform: scaleX(0); 
+      transform-origin: left; 
+      transition: transform 0.4s; 
+    }
+
+    .stat-card:active::after { 
+      transform: scaleX(1); 
+    }
+
+    .stat-icon { 
+      font-size: 16px; 
+      color: var(--accent); 
+      margin-bottom: 4px; 
+    }
+
+    .stat-value { 
+      font-family: var(--display); 
+      font-size: 28px; 
+      font-weight: 900; 
+      color: var(--text); 
+      line-height: 1; 
+    }
+
+    .stat-unit { 
+      font-size: 9px; 
+      color: var(--muted2); 
+      letter-spacing: 1px; 
+      text-transform: uppercase; 
+    }
+
+    .stat-label { 
+      font-size: 9px; 
+      color: var(--muted); 
+      letter-spacing: 1px; 
+      text-transform: uppercase; 
+      margin-top: 2px; 
+    }
+
+    /* CARD */
+    .card { 
+      background: var(--surface); 
+      border: 1px solid var(--border); 
+      padding: 16px; 
+      margin-bottom: 12px; 
+    }
+
+    .card-title { 
+      font-family: var(--display); 
+      font-size: 13px; 
+      font-weight: 700; 
+      letter-spacing: 1px; 
+      text-transform: uppercase; 
+      color: var(--text); 
+    }
+
+    .card-sub { 
+      font-size: 10px; 
+      color: var(--muted); 
+      margin-top: 2px; 
+      margin-bottom: 14px; 
+    }
+
+    /* BAR CHART */
+    .bar-chart { 
+      display: flex; 
+      align-items: flex-end; 
+      gap: 4px; 
+      height: 80px; 
+    }
+
+    .bar-wrap { 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      gap: 6px; 
+      height: 100%; 
+      justify-content: flex-end; 
+    }
+
+    .bar { 
+      background: var(--accent); 
+      width: 100%; 
+      transition: height 0.6s cubic-bezier(0.34,1.56,0.64,1); 
+      min-height: 3px; 
+      position: relative; 
+    }
+
+    .bar.today { 
+      background: var(--accent); 
+      box-shadow: 0 0 8px rgba(184,255,87,0.4); 
+    }
+
+    .bar.dim { 
+      background: var(--surface2); 
+      border: 1px solid var(--border2); 
+    }
+
+    .bar-lbl { 
+      font-size: 9px; 
+      color: var(--muted); 
+    }
+
+    /* TODAY WORKOUT */
+    .workout-meta { 
+      display: flex; 
+      gap: 16px; 
+      margin-bottom: 14px; 
+    }
+
+    .workout-chip { 
+      font-size: 10px; 
+      color: var(--muted2); 
+      padding: 4px 8px; 
+      border: 1px solid var(--border2); 
+    }
+
+    .btn-start {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #0b0b0b;
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      -webkit-user-select: none;
+      user-select: none;
+      active: true;
+    }
+
+    .btn-start:active { 
+      filter: brightness(0.95); 
+    }
+
+    .btn-start.active { 
+      background: var(--surface2); 
+      color: var(--accent); 
+      border: 1px solid var(--accent); 
+    }
+
+    .dot-pulse { 
+      width: 8px; 
+      height: 8px; 
+      border-radius: 50%; 
+      background: var(--accent); 
+      animation: pulse 1.2s infinite; 
+    }
+
+    @keyframes pulse { 
+      0%,100%{opacity:1;transform:scale(1)} 
+      50%{opacity:0.5;transform:scale(0.8)} 
+    }
+
+    .streak-row { 
+      display: flex; 
+      gap: 4px; 
+      margin-top: 8px; 
+    }
+
+    .streak-dot { 
+      width: 10px; 
+      height: 10px; 
+      background: var(--accent); 
+    }
+
+    .streak-dot.off { 
+      background: var(--surface2); 
+      border: 1px solid var(--border2); 
+    }
+
+    /* PLANNER */
+    .week-grid { 
+      display: grid; 
+      grid-template-columns: repeat(7, 1fr); 
+      gap: 6px; 
+      margin-bottom: 16px; 
+    }
+
+    .day-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 10px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+      active: true;
+    }
+
+    .day-btn:active { 
+      border-color: var(--border2); 
+    }
+
+    .day-btn.active { 
+      border-color: var(--accent); 
+      background: var(--accent-dim); 
+    }
+
+    .day-btn.rest { 
+      opacity: 0.4; 
+    }
+
+    .day-name { 
+      font-size: 9px; 
+      color: var(--muted2); 
+      letter-spacing: 0.5px; 
+    }
+
+    .day-type { 
+      font-family: var(--display); 
+      font-size: 11px; 
+      font-weight: 700; 
+      color: var(--accent); 
+      text-align: center; 
+    }
+
+    .day-count { 
+      font-size: 8px; 
+      color: var(--muted); 
+      text-align: center; 
+    }
+
+    .exercise-panel { 
+      background: var(--surface); 
+      border: 1px solid var(--border); 
+      padding: 16px; 
+    }
+
+    .ex-header { 
+      font-family: var(--display); 
+      font-size: 18px; 
+      font-weight: 900; 
+      color: var(--text); 
+      padding-bottom: 12px; 
+      border-bottom: 1px solid var(--border); 
+      margin-bottom: 12px; 
+    }
+
+    .ex-row { 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      padding: 10px 0; 
+      border-bottom: 1px solid var(--border); 
+    }
+
+    .ex-check {
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--border2);
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 13px;
+      transition: all 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+      active: true;
+    }
+
+    .ex-check.checked { 
+      background: var(--accent); 
+      color: #0b0b0b; 
+      border-color: var(--accent); 
+    }
+
+    .ex-info { 
+      flex: 1; 
+    }
+
+    .ex-name { 
+      font-size: 12px; 
+      color: var(--text); 
+      font-weight: bold; 
+    }
+
+    .ex-name.done { 
+      text-decoration: line-through; 
+      color: var(--muted); 
+    }
+
+    .ex-sets { 
+      font-size: 10px; 
+      color: var(--muted); 
+      margin-top: 1px; 
+    }
+
+    .weight-wrap { 
+      display: flex; 
+      align-items: center; 
+      gap: 4px; 
+      background: var(--bg); 
+      border: 1px solid var(--border); 
+      padding: 4px 8px; 
+    }
+
+    .weight-wrap input { 
+      background: transparent; 
+      border: none; 
+      outline: none; 
+      color: var(--text); 
+      font-family: var(--mono); 
+      font-size: 13px; 
+      width: 44px; 
+      text-align: right; 
+    }
+
+    .weight-lbl { 
+      font-size: 9px; 
+      color: var(--muted); 
+    }
+
+    .add-row { 
+      display: flex; 
+      gap: 8px; 
+      margin-top: 12px; 
+    }
+
+    .add-row input { 
+      flex: 1; 
+      background: var(--bg); 
+      border: 1px solid var(--border); 
+      padding: 10px; 
+      color: var(--text); 
+      font-family: var(--mono); 
+      font-size: 11px; 
+      outline: none; 
+    }
+
+    .add-row input::placeholder { 
+      color: var(--muted); 
+    }
+
+    .add-row input:focus { 
+      border-color: var(--accent); 
+    }
+
+    .add-btn { 
+      background: var(--accent); 
+      color: #0b0b0b; 
+      border: none; 
+      padding: 10px 16px; 
+      font-size: 18px; 
+      cursor: pointer; 
+      font-weight: bold; 
+      -webkit-user-select: none;
+      user-select: none;
+      active: true;
+    }
+
+    .add-btn:active { 
+      filter: brightness(0.95); 
+    }
+
+    /* PEDOMETER */
+    .ped-center { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      padding: 24px 0; 
+      position: relative; 
+    }
+
+    .ped-ring-wrap { 
+      position: relative; 
+      width: 200px; 
+      height: 200px; 
+    }
+
+    .ped-svg { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+    }
+
+    .ped-inner { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 200px; 
+      height: 200px; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+    }
+
+    .ped-steps { 
+      font-family: var(--display); 
+      font-size: 38px; 
+      font-weight: 900; 
+      color: var(--text); 
+      line-height: 1; 
+    }
+
+    .ped-steps-lbl { 
+      font-size: 9px; 
+      color: var(--muted); 
+      letter-spacing: 3px; 
+      margin-top: 2px; 
+    }
+
+    .ped-pct { 
+      font-size: 11px; 
+      color: var(--accent); 
+      margin-top: 4px; 
+    }
+
+    .ped-stats { 
+      display: flex; 
+      justify-content: space-around; 
+      width: 100%; 
+      margin: 8px 0 20px; 
+    }
+
+    .ped-stat { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      gap: 4px; 
+    }
+
+    .ped-stat-val { 
+      font-family: var(--display); 
+      font-size: 22px; 
+      font-weight: 900; 
+      color: var(--text); 
+    }
+
+    .ped-stat-unit { 
+      font-size: 9px; 
+      color: var(--accent); 
+      letter-spacing: 1px; 
+    }
+
+    .ped-stat-lbl { 
+      font-size: 9px; 
+      color: var(--muted); 
+    }
+
+    .step-btns { 
+      display: flex; 
+      gap: 10px; 
+      margin-bottom: 16px; 
+      width: 100%; 
+    }
+
+    .step-btn {
+      flex: 1;
+      background: var(--accent);
+      color: #0b0b0b;
+      border: none;
+      padding: 14px;
+      font-family: var(--display);
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+      active: true;
+    }
+
+    .step-btn:active { 
+      transform: scale(0.97); 
+    }
+
+    .goal-row { 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      background: var(--surface); 
+      border: 1px solid var(--border); 
+      padding: 14px 16px; 
+      margin-bottom: 12px; 
+    }
+
+    .goal-lbl { 
+      font-size: 9px; 
+      color: var(--muted); 
+      letter-spacing: 1px; 
+      flex: 1; 
+    }
+
+    .goal-row input { 
+      background: var(--bg); 
+      border: 1px solid var(--border); 
+      color: var(--text); 
+      font-family: var(--display); 
+      font-size: 22px; 
+      font-weight: 900; 
+      padding: 4px 8px; 
+      width: 100px; 
+      text-align: right; 
+      outline: none; 
+    }
+
+    .goal-row input:focus { 
+      border-color: var(--accent); 
+    }
+
+    .goal-unit { 
+      font-size: 10px; 
+      color: var(--muted); 
+    }
+
+    /* DIVIDER */
+    .divider { 
+      width: 100%; 
+      height: 1px; 
+      background: var(--border); 
+      margin: 8px 0; 
+    }
+
+    /* EMPTY */
+    .empty { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      padding: 32px; 
+      color: var(--muted); 
+      gap: 8px; 
+      font-size: 11px; 
+    }
+
+    .empty-icon { 
+      font-size: 32px; 
+    }
+
+    /* HEADER ROW */
+    .top-row { 
+      display: flex; 
+      align-items: flex-end; 
+      justify-content: space-between; 
+      margin-bottom: 6px; 
+    }
+
+    .greeting { 
+      font-size: 10px; 
+      color: var(--muted); 
+      letter-spacing: 1px; 
+    }
+
+    /* MOBILE OPTIMIZATIONS */
+    @media (max-width: 375px) {
+      .screen-title {
+        font-size: 28px;
+      }
+      .stat-value {
+        font-size: 24px;
+      }
+      .ped-steps {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h2 class="sr-only">fitforge Fitness App — Dashboard, Workout Planner, and Pedometer</h2>
+
+<div id="forge-root">
+
+  <!-- DASHBOARD SCREEN -->
+  <div class="screen active" id="screen-dash">
+    <div class="top-row">
+      <span class="greeting">GOOD EVENING</span>
+      <span style="font-size:10px;color:var(--accent);letter-spacing:1px">fitforge v1.0</span>
+    </div>
+    <div class="screen-title">DASHBOARD</div>
+    <div class="quote-bar" id="dash-quote">The only bad workout is the one that didn't happen.</div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-value">487</div>
+        <div class="stat-unit">kcal</div>
+        <div class="stat-label">Calories</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-value">52</div>
+        <div class="stat-unit">min</div>
+        <div class="stat-label">Active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👟</div>
+        <div class="stat-value">7,432</div>
+        <div class="stat-unit">steps</div>
+        <div class="stat-label">Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-value">12</div>
+        <div class="stat-unit">days</div>
+        <div class="stat-label">Streak</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Weekly Volume</div>
+      <div class="card-sub">Minutes per session</div>
+      <div class="bar-chart" id="weekly-chart"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Today's Workout</div>
+      <div class="card-sub">Push Day — Monday</div>
+      <div class="workout-meta">
+        <div class="workout-chip">5 exercises</div>
+        <div class="workout-chip">18 sets</div>
+        <div class="workout-chip">~55 min</div>
+      </div>
+      <button class="btn-start" id="start-btn" onclick="toggleWorkout()">
+        <span id="start-icon">▶</span>
+        <span id="start-text">START WORKOUT</span>
+      </button>
+      <div style="margin-top:12px">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">12-DAY STREAK</div>
+        <div class="streak-row" id="streak-dots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLANNER SCREEN -->
+  <div class="screen" id="screen-plan">
+    <div class="screen-title">PLANNER</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:16px;letter-spacing:0.5px">Tap a day to view exercises</div>
+    <div class="week-grid" id="week-grid"></div>
+    <div id="exercise-panel"></div>
+  </div>
+
+  <!-- PEDOMETER SCREEN -->
+  <div class="screen" id="screen-ped">
+    <div class="screen-title">PEDOMETER</div>
+    <div class="quote-bar">Every step counts. Keep moving.</div>
+    <div class="ped-center">
+      <div class="ped-ring-wrap">
+        <svg class="ped-svg" width="200" height="200" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="85" fill="none" stroke="#1c1c1c" stroke-width="14"/>
+          <circle id="ring-fill" cx="100" cy="100" r="85" fill="none" stroke="#b8ff57" stroke-width="14"
+            stroke-linecap="square" stroke-dasharray="534" stroke-dashoffset="534"
+            transform="rotate(-90 100 100)" style="transition:stroke-dashoffset 0.8s cubic-bezier(0.34,1.56,0.64,1)"/>
+        </svg>
+        <div class="ped-inner">
+          <div class="ped-steps" id="ped-steps">7,432</div>
+          <div class="ped-steps-lbl">STEPS</div>
+          <div class="ped-pct" id="ped-pct">74%</div>
+        </div>
+      </div>
+    </div>
+    <div class="ped-stats">
+      <div class="ped-stat">
+        <div class="ped-stat-val" id="ped-dist">5.66</div>
+        <div class="ped-stat-unit">KM</div>
+        <div class="ped-stat-lbl">Distance</div>
+      </div>
+      <div class="ped-stat" style="border-left:1px solid var(--border);border-right:1px solid var(--border);padding:0 24px">
+        <div class="ped-stat-val" id="ped-cal">297</div>
+        <div class="ped-stat-unit">KCAL</div>
+        <div class="ped-stat-lbl">Burned</div>
+      </div>
+      <div class="ped-stat">
+        <div class="ped-stat-val" id="ped-min">74</div>
+        <div class="ped-stat-unit">MIN</div>
+        <div class="ped-stat-lbl">Active</div>
+      </div>
+    </div>
+    <div class="step-btns">
+      <button class="step-btn" onclick="addSteps(500)">+ 500 STEPS</button>
+      <button class="step-btn" onclick="addSteps(1000)">+ 1000 STEPS</button>
+    </div>
+    <div class="goal-row">
+      <span class="goal-lbl">DAILY GOAL</span>
+      <input type="number" id="goal-input" value="10000" onchange="updateGoal()" />
+      <span class="goal-unit">steps</span>
+    </div>
+    <div class="card">
+      <div class="card-title">Weekly Trend</div>
+      <div class="card-sub">Steps per day</div>
+      <div class="bar-chart" id="ped-chart"></div>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-dash" onclick="switchTab('dash')">
+      <div class="tab-icon">⊞</div>
+      <span>DASH</span>
+    </button>
+    <button class="tab-btn" id="tab-plan" onclick="switchTab('plan')">
+      <div class="tab-icon">📋</div>
+      <span>PLAN</span>
+    </button>
+    <button class="tab-btn" id="tab-ped" onclick="switchTab('ped')">
+      <div class="tab-icon">👟</div>
+      <span>STEPS</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  // Import Capacitor
+  const { App, StatusBar } = window.capacitor;
+
+  // Initialize Capacitor on load
+  if (window.capacitor) {
+    document.addEventListener('DOMContentLoaded', () => {
+      StatusBar.setStyle({ style: 'DARK' });
+      StatusBar.setBackgroundColor({ color: '#0b0b0b' });
+    });
+  }
+
+  const QUOTES = [
+    "Pain is temporary. Pride is forever.",
+    "The only bad workout is the one that didn't happen.",
+    "Discipline is doing what needs to be done.",
+    "Sweat is just fat crying.",
+    "Champions are made on hard days.",
+    "Your body achieves what your mind believes."
+  ];
+
+  const WEEKLY = [45,60,30,75,50,90,40];
+  const WEEKLY_LABELS = ['M','T','W','T','F','S','S'];
+  const TODAY_IDX = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+  const PED_WEEKLY = [8234,9456,7123,10234,8901,6543,7432];
+
+  const PLAN = [
+    { day:'Mon', type:'Push', exs:[
+      {n:'Bench Press',s:4,r:8,w:135,d:false},
+      {n:'Incline DB Press',s:3,r:10,w:40,d:false},
+      {n:'Overhead Press',s:3,r:8,w:95,d:false},
+      {n:'Tricep Dips',s:3,r:12,w:0,d:false},
+      {n:'Lateral Raises',s:3,r:15,w:15,d:false}
+    ]},
+    { day:'Tue', type:'Pull', exs:[
+      {n:'Deadlift',s:4,r:6,w:225,d:false},
+      {n:'Pull-ups',s:4,r:8,w:0,d:false},
+      {n:'Barbell Rows',s:3,r:10,w:135,d:false},
+      {n:'Face Pulls',s:3,r:15,w:30,d:false},
+      {n:'Bicep Curls',s:3,r:12,w:25,d:false}
+    ]},
+    { day:'Wed', type:'Legs', exs:[
+      {n:'Squats',s:4,r:8,w:185,d:false},
+      {n:'Romanian DL',s:3,r:10,w:155,d:false},
+      {n:'Leg Press',s:3,r:12,w:320,d:false},
+      {n:'Leg Curls',s:3,r:15,w:70,d:false},
+      {n:'Calf Raises',s:4,r:20,w:90,d:false}
+    ]},
+    { day:'Thu', type:'Rest', exs:[] },
+    { day:'Fri', type:'Push', exs:[
+      {n:'Bench Press',s:4,r:8,w:140,d:false},
+      {n:'Incline DB Press',s:3,r:10,w:45,d:false},
+      {n:'Overhead Press',s:3,r:8,w:100,d:false},
+      {n:'Tricep Pushdown',s:3,r:12,w:50,d:false}
+    ]},
+    { day:'Sat', type:'Pull', exs:[
+      {n:'Deadlift',s:4,r:5,w:235,d:false},
+      {n:'Pull-ups',s:4,r:10,w:0,d:false},
+      {n:'T-Bar Rows',s:3,r:10,w:120,d:false},
+      {n:'Hammer Curls',s:3,r:12,w:25,d:false}
+    ]},
+    { day:'Sun', type:'Rest', exs:[] }
+  ];
+
+  let pedSteps = 7432;
+  let pedGoal = 10000;
+  let selectedDay = null;
+  let workoutActive = false;
+  let newExName = '';
+
+  document.getElementById('dash-quote').textContent = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+
+  function buildBarChart(containerId, data, labels, highlightIdx) {
+    const el = document.getElementById(containerId);
+    const max = Math.max(...data);
+    el.innerHTML = data.map((v,i) => {
+      const h = Math.round((v/max)*72);
+      const isHigh = i === highlightIdx;
+      const isDim = v === 0;
+      return `<div class="bar-wrap">
+        <div class="bar${isHigh?' today':isDim?' dim':''}" style="height:${h}px"></div>
+        <span class="bar-lbl">${labels[i]}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function buildStreakDots() {
+    const el = document.getElementById('streak-dots');
+    el.innerHTML = Array.from({length:12},(_,i)=>`<div class="streak-dot${i>=10?' off':''}"></div>`).join('');
+  }
+
+  function buildWeekGrid() {
+    const el = document.getElementById('week-grid');
+    el.innerHTML = PLAN.map((d,i)=>`
+      <div class="day-btn${d.type==='Rest'?' rest':''}${selectedDay===i?' active':''}" onclick="selectDay(${i})">
+        <span class="day-name">${d.day.slice(0,2).toUpperCase()}</span>
+        <span class="day-type">${d.type}</span>
+        <span class="day-count">${d.exs.length>0?d.exs.length+'ex':'—'}</span>
+      </div>`).join('');
+  }
+
+  function buildExPanel() {
+    const el = document.getElementById('exercise-panel');
+    if (selectedDay === null) { el.innerHTML=''; return; }
+    const day = PLAN[selectedDay];
+    if (day.type === 'Rest') {
+      el.innerHTML=`<div class="exercise-panel"><div class="empty"><div class="empty-icon">😴</div><span>Rest day. Recovery is part of training.</span></div></div>`;
+      return;
+    }
+    const exRows = day.exs.map((ex,i)=>`
+      <div class="ex-row">
+        <div class="ex-check${ex.d?' checked':''}" onclick="toggleEx(${selectedDay},${i})">${ex.d?'✓':''}</div>
+        <div class="ex-info">
+          <div class="ex-name${ex.d?' done':''}">${ex.n}</div>
+          <div class="ex-sets">${ex.s} sets × ${ex.r} reps</div>
+        </div>
+        <div class="weight-wrap">
+          <input type="number" value="${ex.w||''}" placeholder="0" onchange="setWeight(${selectedDay},${i},this.value)" />
+          <span class="weight-lbl">kg</span>
+        </div>
+      </div>`).join('');
+    const done = day.exs.filter(e=>e.d).length;
+    el.innerHTML=`<div class="exercise-panel">
+      <div class="ex-header">${day.day} — ${day.type} <span style="font-size:12px;color:var(--muted);font-weight:400">(${done}/${day.exs.length})</span></div>
+      ${exRows}
+      <div class="add-row">
+        <input id="new-ex-input" placeholder="Add exercise..." onkeydown="if(event.key==='Enter')addEx(${selectedDay})" />
+        <button class="add-btn" onclick="addEx(${selectedDay})">+</button>
+      </div>
+    </div>`;
+  }
+
+  function selectDay(i) {
+    selectedDay = selectedDay === i ? null : i;
+    buildWeekGrid();
+    buildExPanel();
+  }
+
+  function toggleEx(di,ei) {
+    PLAN[di].exs[ei].d = !PLAN[di].exs[ei].d;
+    buildWeekGrid();
+    buildExPanel();
+  }
+
+  function setWeight(di,ei,v) {
+    PLAN[di].exs[ei].w = parseInt(v)||0;
+  }
+
+  function addEx(di) {
+    const inp = document.getElementById('new-ex-input');
+    const name = inp ? inp.value.trim() : '';
+    if (!name) return;
+    PLAN[di].exs.push({n:name,s:3,r:10,w:0,d:false});
+    buildWeekGrid();
+    buildExPanel();
+  }
+
+  function updatePedRing() {
+    const pct = Math.min(pedSteps/pedGoal,1);
+    const circ = 2*Math.PI*85;
+    const offset = circ - pct*circ;
+    document.getElementById('ring-fill').style.strokeDasharray = circ;
+    document.getElementById('ring-fill').style.strokeDashoffset = offset;
+    document.getElementById('ped-steps').textContent = pedSteps.toLocaleString();
+    document.getElementById('ped-pct').textContent = Math.round(pct*100)+'%';
+    document.getElementById('ped-dist').textContent = (pedSteps*0.000762).toFixed(2);
+    document.getElementById('ped-cal').textContent = Math.round(pedSteps*0.04);
+    document.getElementById('ped-min').textContent = Math.round(pedSteps/100);
+  }
+
+  function addSteps(n) {
+    pedSteps += n;
+    updatePedRing();
+    buildBarChart('ped-chart', [...PED_WEEKLY.slice(0,-1), pedSteps], WEEKLY_LABELS, TODAY_IDX);
+  }
+
+  function updateGoal() {
+    pedGoal = parseInt(document.getElementById('goal-input').value)||10000;
+    updatePedRing();
+  }
+
+  function toggleWorkout() {
+    workoutActive = !workoutActive;
+    const btn = document.getElementById('start-btn');
+    const icon = document.getElementById('start-icon');
+    const text = document.getElementById('start-text');
+    if (workoutActive) {
+      btn.classList.add('active');
+      icon.outerHTML = '<div id="start-icon" class="dot-pulse"></div>';
+      text.textContent = 'WORKOUT IN PROGRESS';
+    } else {
+      btn.classList.remove('active');
+      document.getElementById('start-icon').outerHTML = '<span id="start-icon">▶</span>';
+      text.textContent = 'START WORKOUT';
+    }
+  }
+
+  function switchTab(tab) {
+    ['dash','plan','ped'].forEach(t=>{
+      document.getElementById('screen-'+t).classList.remove('active');
+      document.getElementById('tab-'+t).classList.remove('active');
+    });
+    document.getElementById('screen-'+tab).classList.add('active');
+    document.getElementById('tab-'+tab).classList.add('active');
+  }
+
+  buildBarChart('weekly-chart', WEEKLY, WEEKLY_LABELS, TODAY_IDX);
+  buildStreakDots();
+  buildWeekGrid();
+  updatePedRing();
+  buildBarChart('ped-chart', PED_WEEKLY, WEEKLY_LABELS, TODAY_IDX);
+</script>
+
+<!-- Capacitor -->
+<script src="https://unpkg.com/@capacitor/core/dist/capacitor.js"></script>
+
+</body>
+</html>

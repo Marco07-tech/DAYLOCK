@@ -1,0 +1,27 @@
+{
+  "appId": "com.fitforge.app",
+  "appName": "fitforge",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "ioScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0b0b0b",
+      "textColor": "#b8ff57"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0b0b0b"
+    }
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
