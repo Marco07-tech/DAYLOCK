@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0b0b">
+    <meta name="description" content="FORGE - A powerful fitness tracking PWA for workouts, planning, and pedometer tracking.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FORGE">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <title>FORGE Fitness</title>
+</head>
+<body>
+    <style>
+        body { margin: 0; padding: 0; background: #0b0b0b; }
+    </style>
+
+    <h2 class="sr-only">FORGE Fitness App — Dashboard, Workout Planner, and Pedometer</h2>
+
+    <!-- PWA INSTALL PROMPT BANNER -->
+    <div id="install-banner" class="install-banner">
+        <div class="install-banner-content">
+            <span class="install-text">Add FORGE to home screen</span>
+            <div class="install-controls">
+                <button id="install-btn" class="install-btn">Install</button>
+                <button id="dismiss-btn" class="dismiss-btn">×</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="forge-root">
+
+        <!-- DASHBOARD SCREEN -->
+        <div class="screen active" id="screen-dash">
+            <div class="top-row">
+                <span class="greeting">GOOD EVENING</span>
+                <span style="font-size:10px;color:var(--accent);letter-spacing:1px">FORGE v1.0</span>
+            </div>
+            <div class="screen-title">DASHBOARD</div>
+            <div class="quote-bar" id="dash-quote">The only bad workout is the one that didn't happen.</div>
+
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-value">487</div>
+                    <div class="stat-unit">kcal</div>
+                    <div class="stat-label">Calories</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-value">52</div>
+                    <div class="stat-unit">min</div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">👟</div>
+                    <div class="stat-value">7,432</div>
+                    <div class="stat-unit">steps</div>
+                    <div class="stat-label">Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-value">12</div>
+                    <div class="stat-unit">days</div>
+                    <div class="stat-label">Streak</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Weekly Volume</div>
+                <div class="card-sub">Minutes per session</div>
+                <div class="bar-chart" id="weekly-chart"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Today's Workout</div>
+                <div class="card-sub">Push Day — Monday</div>
+                <div class="workout-meta">
+                    <div class="workout-chip">5 exercises</div>
+                    <div class="workout-chip">18 sets</div>
+                    <div class="workout-chip">~55 min</div>
+                </div>
+                <button class="btn-start" id="start-btn" onclick="toggleWorkout()">
+                    <span id="start-icon">▶</span>
+                    <span id="start-text">START WORKOUT</span>
+                </button>
+                <div style="margin-top:12px">
+                    <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">12-DAY STREAK</div>
+                    <div class="streak-row" id="streak-dots"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLANNER SCREEN -->
+        <div class="screen" id="screen-plan">
+            <div class="screen-title">PLANNER</div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:16px;letter-spacing:0.5px">Tap a day to view exercises</div>
+            <div class="week-grid" id="week-grid"></div>
+            <div id="exercise-panel"></div>
+        </div>
+
+        <!-- PEDOMETER SCREEN -->
+        <div class="screen" id="screen-ped">
+            <div class="screen-title">PEDOMETER</div>
+            <div class="quote-bar">Every step counts. Keep moving.</div>
+            <div class="ped-center">
+                <div class="ped-ring-wrap">
+                    <svg class="ped-svg" width="200" height="200" viewBox="0 0 200 200">
+                        <circle cx="100" cy="100" r="85" fill="none" stroke="#1c1c1c" stroke-width="14"/>
+                        <circle id="ring-fill" cx="100" cy="100" r="85" fill="none" stroke="#b8ff57" stroke-width="14"
+                            stroke-linecap="square" stroke-dasharray="534" stroke-dashoffset="534"
+                            transform="rotate(-90 100 100)" style="transition:stroke-dashoffset 0.8s cubic-bezier(0.34,1.56,0.64,1)"/>
+                    </svg>
+                    <div class="ped-inner">
+                        <div class="ped-steps" id="ped-steps">7,432</div>
+                        <div class="ped-steps-lbl">STEPS</div>
+                        <div class="ped-pct" id="ped-pct">74%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="ped-stats">
+                <div class="ped-stat">
+                    <div class="ped-stat-val" id="ped-dist">5.66</div>
+                    <div class="ped-stat-unit">KM</div>
+                    <div class="ped-stat-lbl">Distance</div>
+                </div>
+                <div class="ped-stat" style="border-left:1px solid var(--border);border-right:1px solid var(--border);padding:0 24px">
+                    <div class="ped-stat-val" id="ped-cal">297</div>
+                    <div class="ped-stat-unit">KCAL</div>
+                    <div class="ped-stat-lbl">Burned</div>
+                </div>
+                <div class="ped-stat">
+                    <div class="ped-stat-val" id="ped-min">74</div>
+                    <div class="ped-stat-unit">MIN</div>
+                    <div class="ped-stat-lbl">Active</div>
+                </div>
+            </div>
+            <div class="step-btns">
+                <button class="step-btn" onclick="addSteps(500)">+ 500 STEPS</button>
+                <button class="step-btn" onclick="addSteps(1000)">+ 1000 STEPS</button>
+            </div>
+            <div class="goal-row">
+                <span class="goal-lbl">DAILY GOAL</span>
+                <input type="number" id="goal-input" value="10000" onchange="updateGoal()" />
+                <span class="goal-unit">steps</span>
+            </div>
+            <div class="card">
+                <div class="card-title">Weekly Trend</div>
+                <div class="card-sub">Steps per day</div>
+                <div class="bar-chart" id="ped-chart"></div>
+            </div>
+        </div>
+
+        <!-- TAB BAR -->
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tab-dash" onclick="switchTab('dash')">
+                <div class="tab-icon">⊞</div>
+                <span>DASH</span>
+            </button>
+            <button class="tab-btn" id="tab-plan" onclick="switchTab('plan')">
+                <div class="tab-icon">📋</div>
+                <span>PLAN</span>
+            </button>
+            <button class="tab-btn" id="tab-ped" onclick="switchTab('ped')">
+                <div class="tab-icon">👟</div>
+                <span>STEPS</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
