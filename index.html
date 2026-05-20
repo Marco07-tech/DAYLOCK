@@ -37,7 +37,11 @@
         <div class="screen active" id="screen-dash">
             <div class="top-row">
                 <span class="greeting">GOOD EVENING</span>
-                <span style="font-size:10px;color:var(--accent);letter-spacing:1px">FORGE v1.0</span>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div id="workout-timer" style="display:none;font-size:13px;color:var(--accent);font-family:var(--display);font-weight:700;letter-spacing:1px;">00:00:00</div>
+                    <button id="theme-toggle-btn" onclick="toggleTheme()" style="background:transparent;border:none;font-size:16px;cursor:pointer;padding:4px;">☀</button>
+                    <span style="font-size:10px;color:var(--accent);letter-spacing:1px">FORGE v2.0</span>
+                </div>
             </div>
             <div class="screen-title">DASHBOARD</div>
             <div class="quote-bar" id="dash-quote">The only bad workout is the one that didn't happen.</div>
@@ -91,6 +95,12 @@
                     <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">12-DAY STREAK</div>
                     <div class="streak-row" id="streak-dots"></div>
                 </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Hydration</div>
+                <div class="card-sub">Stay hydrated</div>
+                <div id="water-tracker-container"></div>
             </div>
         </div>
 
@@ -154,6 +164,31 @@
             </div>
         </div>
 
+        <!-- HISTORY SCREEN -->
+        <div class="screen" id="screen-history">
+            <div class="screen-title">HISTORY</div>
+            <div class="quote-bar">Track your progress. Every session matters.</div>
+            <div id="history-content"></div>
+        </div>
+
+        <!-- NUTRITION SCREEN -->
+        <div class="screen" id="screen-nutrition">
+            <div class="screen-title">NUTRITION</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <button class="nutrition-tab active" id="nutrition-log-tab" onclick="document.getElementById('nutrition-log-tab').classList.add('active');document.getElementById('nutrition-summary-tab').classList.remove('active');document.getElementById('nutrition-log-content').classList.add('active');document.getElementById('nutrition-summary-content').classList.remove('active');haptic('light');" style="flex:1;padding:8px;background:var(--accent);color:#0b0b0b;border:none;font-family:var(--display);font-size:11px;font-weight:700;cursor:pointer;">LOG</button>
+                <button class="nutrition-tab" id="nutrition-summary-tab" onclick="document.getElementById('nutrition-log-tab').classList.remove('active');document.getElementById('nutrition-summary-tab').classList.add('active');document.getElementById('nutrition-log-content').classList.remove('active');document.getElementById('nutrition-summary-content').classList.add('active');buildNutritionSummary();haptic('light');" style="flex:1;padding:8px;background:transparent;border:1px solid var(--border);color:var(--text);font-family:var(--display);font-size:11px;font-weight:700;cursor:pointer;">SUMMARY</button>
+            </div>
+            <div id="nutrition-log-content" class="nutrition-sub-tab active"></div>
+            <div id="nutrition-summary-content" class="nutrition-sub-tab"></div>
+        </div>
+
+        <!-- PROFILE SCREEN -->
+        <div class="screen" id="screen-profile">
+            <div class="screen-title">PROFILE</div>
+            <div class="quote-bar">Optimize your body. Know your numbers.</div>
+            <div id="profile-content"></div>
+        </div>
+
         <!-- TAB BAR -->
         <div class="tab-bar">
             <button class="tab-btn active" id="tab-dash" onclick="switchTab('dash')">
@@ -167,6 +202,18 @@
             <button class="tab-btn" id="tab-ped" onclick="switchTab('ped')">
                 <div class="tab-icon">👟</div>
                 <span>STEPS</span>
+            </button>
+            <button class="tab-btn" id="tab-history" onclick="switchTab('history')">
+                <div class="tab-icon">🕐</div>
+                <span>HISTORY</span>
+            </button>
+            <button class="tab-btn" id="tab-nutrition" onclick="switchTab('nutrition')">
+                <div class="tab-icon">🥗</div>
+                <span>NUTRITION</span>
+            </button>
+            <button class="tab-btn" id="tab-profile" onclick="switchTab('profile')">
+                <div class="tab-icon">👤</div>
+                <span>PROFILE</span>
             </button>
         </div>
     </div>
