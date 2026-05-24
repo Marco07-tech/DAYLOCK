@@ -212,6 +212,18 @@ class ForgeAPI {
   // HELPERS
   // ============================================================================
 
+  async sync(data) {
+    if (this.token === 'offline_mode') {
+      return { success: true, offline: true };
+    }
+    const response = await fetch(`${API_BASE_URL}/sync`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
   getHeaders() {
     return {
       'Content-Type': 'application/json',
