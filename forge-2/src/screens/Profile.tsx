@@ -2,7 +2,11 @@ import { motion } from 'framer-motion'
 import { Trophy, Zap, Flame } from 'lucide-react'
 import { userData, achievements } from '@/data/mock-data'
 
-export function Profile() {
+interface ProfileProps {
+  onLogout?: () => void
+}
+
+export function Profile({ onLogout }: ProfileProps) {
   const unlockedCount = achievements.filter(a => a.unlocked).length
   const totalAchievements = achievements.length
 
@@ -109,7 +113,10 @@ export function Profile() {
           <button className="w-full py-3.5 rounded-xl bg-[var(--color-surface)] text-[var(--color-foreground)] font-semibold touch-feedback text-sm">
             Settings
           </button>
-          <button className="w-full py-3.5 rounded-xl bg-red-400/10 text-red-400 font-semibold touch-feedback text-sm">
+          <button
+            onClick={onLogout}
+            className="w-full py-3.5 rounded-xl bg-red-400/10 text-red-400 font-semibold touch-feedback text-sm hover:bg-red-400/20 transition-colors"
+          >
             Sign Out
           </button>
         </motion.div>
