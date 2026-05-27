@@ -1,14 +1,61 @@
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Trophy, Zap, Flame } from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
 import { userData, achievements } from '@/data/mock-data'
 
 interface ProfileProps {
   onLogout?: () => void
 }
 
+interface UserProfile {
+  name: string
+  goal: string
+  age: number
+  weight_kg: number
+  height_cm: number
+}
+
 export function Profile({ onLogout }: ProfileProps) {
+  const { user } = useAuthStore()
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const unlockedCount = achievements.filter(a => a.unlocked).length
   const totalAchievements = achievements.length
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    const fetchProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('name, goal, age, weight_kg, height_cm')
+          .eq('id', user.id)
+          .single()
+
+        if (error) {
+          console.warn('Profile fetch error (expected if users table not ready):', error.message)
+          return
+        }
+
+        if (data) {
+          setProfile(data)
+        }
+      } catch (err) {
+        console.warn('Failed to fetch profile:', err)
+        // Silently fail - will use fallback from auth store
+      }
+    }
+
+    fetchProfile()
+  }, [user?.id])
+
+  const displayName = profile?.name || user?.name || 'Athlete'
+  const displayGoal = profile?.goal
+    ? profile.goal.charAt(0).toUpperCase() + profile.goal.slice(1)
+    : 'Fitness'
+  const avatarLetter = (displayName || 'A')[0].toUpperCase()
 
   return (
     <div className="min-h-screen pb-24">
@@ -16,15 +63,15 @@ export function Profile({ onLogout }: ProfileProps) {
       <div className="px-5 pt-6 pb-8 bg-gradient-to-b from-[var(--color-surface)] to-[var(--color-background)]">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-16 h-16 rounded-xl bg-[var(--color-primary)] flex items-center justify-center">
-            <span className="text-2xl font-bold text-black">M</span>
+            <span className="text-2xl font-bold text-black">{avatarLetter}</span>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[var(--color-foreground)]">{userData.name}</h1>
+            <h1 className="text-2xl font-bold text-[var(--color-foreground)]">{displayName}</h1>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold bg-[var(--color-primary)]/15 text-[var(--color-primary)] px-2 py-1 rounded-full">
-                {userData.level}
+                {displayGoal}
               </span>
-              <span className="text-xs text-[var(--color-muted)]">Member since {userData.memberSince}</span>
+              <span className="text-xs text-[var(--color-muted)]">{user?.email || 'No email'}</span>
             </div>
           </div>
         </div>

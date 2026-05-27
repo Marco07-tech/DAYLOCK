@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { DashboardApp } from '@/screens/DashboardApp'
+import { OnboardingScreen } from '@/screens/OnboardingScreen'
 
 // Auth Screens
 import { LoginScreen } from '@/screens/auth/LoginScreen'
@@ -14,17 +15,64 @@ import { OTPVerificationScreen } from '@/screens/auth/OTPVerificationScreen'
 import { EmailVerificationScreen } from '@/screens/auth/EmailVerificationScreen'
 
 export default function App() {
-  const { isAuthenticated, initializeAuth } = useAuthStore()
+  const { isAuthenticated, user } = useAuthStore()
   const [isInitializing, setIsInitializing] = useState(true)
+  const [needsOnboarding, setNeedsOnboarding] = useState(false)
 
   useEffect(() => {
+    console.log('🔧 Setting up auth listener...')
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('📢 Auth event:', event, 'User:', session?.user?.email)
 
-        if (event === 'INITIAL_SESSION') {
-          // INITIAL_SESSION with no session just means "not logged in yet"
-          // Do NOT treat this as sign-out — just stop initializing
+        try {
+          if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+            console.log('🔄 Processing INITIAL_SESSION or SIGNED_IN...')
+            if (session?.user) {
+              console.log('✅ User exists, setting auth state...')
+              // Set auth state immediately
+              useAuthStore.setState({
+                user: {
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  name:
+                    session.user.user_metadata?.name ||
+                    session.user.email?.split('@')[0] ||
+                    '',
+                },
+                isAuthenticated: true,
+                isLoading: false,
+              })
+
+              // For new OAuth users, always show onboarding first
+              // OnboardingScreen will create the users table entry
+              console.log('ℹ️ Defaulting to onboarding for new user')
+              setNeedsOnboarding(true)
+            } else {
+              console.log('ℹ️ INITIAL_SESSION with no user (not logged in)')
+              // INITIAL_SESSION with no user = not logged in
+              useAuthStore.setState({
+                user: null,
+                isAuthenticated: false,
+                isLoading: false,
+              })
+              setNeedsOnboarding(false)
+            }
+          } else if (event === 'SIGNED_OUT') {
+            console.log('🔓 User signed out')
+            useAuthStore.setState({
+              user: null,
+              isAuthenticated: false,
+              error: null,
+              isLoading: false,
+            })
+            setNeedsOnboarding(false)
+          } else {
+            console.log('⏭️ Other event, skipping handler:', event)
+          }
+        } catch (error) {
+          console.error('❌ Auth state change error:', error)
+          // Even on error, set basic auth state from session
           if (session?.user) {
             useAuthStore.setState({
               user: {
@@ -38,38 +86,12 @@ export default function App() {
               isAuthenticated: true,
               isLoading: false,
             })
+            // Default to onboarding on error
+            setNeedsOnboarding(true)
           }
-          // Always stop initializing on INITIAL_SESSION regardless
-          setIsInitializing(false)
-          return // Exit early, don't fall through to SIGNED_OUT check
-        }
-
-        if (event === 'SIGNED_OUT') {
-          useAuthStore.setState({
-            user: null,
-            isAuthenticated: false,
-            error: null,
-            isLoading: false,
-          })
-          setIsInitializing(false)
-          return
-        }
-
-        if (['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) {
-          if (session?.user) {
-            useAuthStore.setState({
-              user: {
-                id: session.user.id,
-                email: session.user.email || '',
-                name:
-                  session.user.user_metadata?.name ||
-                  session.user.email?.split('@')[0] ||
-                  '',
-              },
-              isAuthenticated: true,
-              isLoading: false,
-            })
-          }
+        } finally {
+          // ALWAYS stop loading, no matter what happens
+          console.log('✅ Setting isInitializing to false')
           setIsInitializing(false)
         }
       }
@@ -77,10 +99,12 @@ export default function App() {
 
     // Fallback timeout (for cases where onAuthStateChange doesn't fire)
     const timeoutId = setTimeout(() => {
+      console.warn('⚠️ Auth initialization timeout reached')
       setIsInitializing(false)
     }, 5000)
 
     return () => {
+      console.log('🧹 Cleaning up auth listener')
       subscription?.unsubscribe()
       clearTimeout(timeoutId)
     }
@@ -104,11 +128,23 @@ export default function App() {
         {/* Auth Routes */}
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginScreen />}
+          element={
+            isAuthenticated && !needsOnboarding
+              ? <Navigate to="/dashboard" replace />
+              : isAuthenticated && needsOnboarding
+              ? <Navigate to="/onboarding" replace />
+              : <LoginScreen />
+          }
         />
         <Route
           path="/signup"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <SignupScreen />}
+          element={
+            isAuthenticated && !needsOnboarding
+              ? <Navigate to="/dashboard" replace />
+              : isAuthenticated && needsOnboarding
+              ? <Navigate to="/onboarding" replace />
+              : <SignupScreen />
+          }
         />
         <Route
           path="/forgot-password"
@@ -125,6 +161,18 @@ export default function App() {
         <Route
           path="/verify-email"
           element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <EmailVerificationScreen />}
+        />
+
+        {/* Onboarding Route */}
+        <Route
+          path="/onboarding"
+          element={
+            isAuthenticated ? (
+              <OnboardingScreen />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
 
         {/* Protected Dashboard Routes */}
@@ -148,8 +196,12 @@ export default function App() {
                   <p className="text-[var(--color-muted)]">Loading...</p>
                 </div>
               </div>
+            ) : isAuthenticated && needsOnboarding ? (
+              <Navigate to="/onboarding" replace />
+            ) : isAuthenticated && !needsOnboarding ? (
+              <Navigate to="/dashboard" replace />
             ) : (
-              <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />
+              <Navigate to="/login" replace />
             )
           }
         />
