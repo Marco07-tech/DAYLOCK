@@ -67,3 +67,30 @@
   animation: fadeSlideUp 0.25s ease forwards;
 }
 
+.step-exit {
+  animation: stepOut 0.2s ease forwards;
+}
+
+.step-enter {
+  animation: stepIn 0.25s ease forwards;
+}
+
+@keyframes stepOut {
+  to {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+

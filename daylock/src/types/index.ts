@@ -13,7 +13,7 @@ export interface Task {
   type: TaskType;
   name: string;
   icon: string;
-  meta?: Record<string, unknown>;
+  meta?: Record<string, unknown> | string;
   streak: number;
   done: boolean;
   scheduledDays: string[];

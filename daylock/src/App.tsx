@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './store/useAuthStore'
 import { useTaskStore } from './store/useTaskStore'
 import { useGymStore } from './store/useGymStore'
 import { AppShell } from './components/layout/AppShell'
 import { LoginPage } from './pages/Auth/LoginPage'
 import { SignupPage } from './pages/Auth/SignupPage'
+import { OnboardingPage } from './pages/Onboarding/OnboardingPage'
 import { DashboardPage } from './pages/Dashboard/DashboardPage'
 import { GymPage } from './pages/Gym/GymPage'
 import { StatsPage } from './pages/Stats/StatsPage'
@@ -19,23 +20,126 @@ interface ProtectedRouteProps {
 
 function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 
+  if (onboardingCompleted === false) {
+    return <Navigate to="/onboarding" replace />
+  }
+
   return <AppShell>{children}</AppShell>
+}
+
+function OnboardingRoute({ children }: ProtectedRouteProps) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (onboardingCompleted === true) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <>{children}</>
 }
 
 // Root redirect component
 function RootRedirect() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (onboardingCompleted === false) {
+    return <Navigate to="/onboarding" replace />
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
 
   return <Navigate to="/login" replace />
+}
+
+function AppRouter() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+  const authIsLoading = useAuthStore((state) => state.isLoading)
+
+  useEffect(() => {
+    if (authIsLoading || !isAuthenticated || onboardingCompleted === null) {
+      return
+    }
+
+    const publicRoutes = ['/', '/login', '/signup']
+    const shouldGoToOnboarding = onboardingCompleted === false
+
+    if (shouldGoToOnboarding && location.pathname !== '/onboarding') {
+      navigate('/onboarding', { replace: true })
+      return
+    }
+
+    if (!shouldGoToOnboarding && publicRoutes.includes(location.pathname)) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [authIsLoading, isAuthenticated, onboardingCompleted, location.pathname, navigate])
+
+  return (
+    <Routes>
+      <Route path="/" element={<RootRedirect />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route
+        path="/onboarding"
+        element={
+          <OnboardingRoute>
+            <OnboardingPage />
+          </OnboardingRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/gym"
+        element={
+          <ProtectedRoute>
+            <GymPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/stats"
+        element={
+          <ProtectedRoute>
+            <StatsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  )
 }
 
 export function App() {
@@ -112,43 +216,7 @@ export function App() {
 
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<RootRedirect />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/gym"
-          element={
-            <ProtectedRoute>
-              <GymPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/stats"
-          element={
-            <ProtectedRoute>
-              <StatsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <SettingsPage />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <AppRouter />
     </Router>
   )
 }
