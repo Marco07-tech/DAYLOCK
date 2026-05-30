@@ -56,13 +56,15 @@ interface AuthState {
   isLoading: boolean
   error: string | null
   onboardingCompleted: boolean | null
+  setUser: (user: User | null) => void
+  setIsAuthenticated: (isAuthenticated: boolean) => void
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
   initAuth: () => Promise<void>
   checkOnboarding: (userId: string) => Promise<boolean>
   updateUserName: (name: string) => void
-  setOnboardingCompleted: (completed: boolean) => void
+  setOnboardingCompleted: (completed: boolean | null) => void
   clearError: () => void
 }
 
@@ -80,6 +82,14 @@ export const useAuthStore = create<AuthState>((set) => {
     isLoading: false,
     error: null,
     onboardingCompleted: null,
+
+    setUser: (user: User | null) => {
+      set({ user })
+    },
+
+    setIsAuthenticated: (isAuthenticated: boolean) => {
+      set({ isAuthenticated })
+    },
 
     checkOnboarding: async (userId: string) => {
       const profile = await fetchProfile(userId)
@@ -99,7 +109,7 @@ export const useAuthStore = create<AuthState>((set) => {
       )
     },
 
-    setOnboardingCompleted: (completed: boolean) => {
+    setOnboardingCompleted: (completed: boolean | null) => {
       set({ onboardingCompleted: completed })
     },
 

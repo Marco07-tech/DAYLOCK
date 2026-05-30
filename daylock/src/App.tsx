@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 import { useAuthStore } from './store/useAuthStore'
 import { useTaskStore } from './store/useTaskStore'
 import { useGymStore } from './store/useGymStore'
+import { supabase } from './lib/supabase'
 import { AppShell } from './components/layout/AppShell'
 import { LoginPage } from './pages/Auth/LoginPage'
 import { SignupPage } from './pages/Auth/SignupPage'
@@ -80,7 +81,7 @@ function AppRouter() {
       return
     }
 
-    const publicRoutes = ['/', '/login', '/signup']
+    const publicRoutes = ['/', '/login', '/signup', '/onboarding']
     const shouldGoToOnboarding = onboardingCompleted === false
 
     if (shouldGoToOnboarding && location.pathname !== '/onboarding') {
@@ -145,6 +146,9 @@ function AppRouter() {
 export function App() {
   const [appLoading, setAppLoading] = useState(true)
   const initAuth = useAuthStore((state) => state.initAuth)
+  const setUser = useAuthStore((state) => state.setUser)
+  const setIsAuthenticated = useAuthStore((state) => state.setIsAuthenticated)
+  const setOnboardingCompleted = useAuthStore((state) => state.setOnboardingCompleted)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
   const authIsLoading = useAuthStore((state) => state.isLoading)
@@ -159,6 +163,67 @@ export function App() {
     }
     initializeAuth()
   }, [initAuth])
+
+  useEffect(() => {
+    // Listen for auth state changes including OAuth callbacks
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          const userName =
+            profile?.name ||
+            session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.name ||
+            session.user.email?.split('@')[0] ||
+            'User'
+
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name: userName,
+          })
+          setIsAuthenticated(true)
+
+          await Promise.all([loadTasks(session.user.id), loadGymSplit(session.user.id)])
+          await loadTodayWorkout(session.user.id)
+
+          const onboardingDone = profile?.onboarding_completed ?? false
+          setOnboardingCompleted(onboardingDone)
+
+          if (!onboardingDone) {
+            if (window.location.pathname !== '/onboarding') {
+              window.location.assign('/onboarding')
+            }
+          } else {
+            const currentPath = window.location.pathname
+            if (currentPath === '/login' || currentPath === '/signup') {
+              window.location.assign('/dashboard')
+            }
+          }
+        } catch (err) {
+          console.error('Auth state change error:', err)
+        }
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setIsAuthenticated(false)
+        setOnboardingCompleted(null)
+        if (window.location.pathname !== '/login') {
+          window.location.assign('/login')
+        }
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [loadGymSplit, loadTasks, loadTodayWorkout, setIsAuthenticated, setOnboardingCompleted, setUser])
 
   // Load user data after auth is initialized
   useEffect(() => {
