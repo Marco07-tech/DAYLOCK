@@ -118,17 +118,15 @@ function AppRouter() {
 
     // Initialize auth on mount
     const initializeAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
 
-      if (session?.user) {
-        try {
+        if (session?.user) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
-            .single()
+            .maybeSingle()
 
           setUser({
             id: session.user.id,
@@ -141,29 +139,41 @@ function AppRouter() {
           })
           setIsAuthenticated(true)
 
-          await Promise.all([
-            loadTasks(session.user.id),
-            loadGymSplit(session.user.id),
-            loadTodayWorkout(session.user.id),
-          ])
-
           const onboardingDone = profile?.onboarding_completed ?? false
           setOnboardingCompleted(onboardingDone)
 
-          if (!onboardingDone) {
-            navigate('/onboarding', { replace: true })
-          } else {
-            const currentPath = window.location.pathname
-            if (currentPath === '/login' || currentPath === '/signup' || currentPath === '/') {
+          try {
+            await Promise.all([
+              loadTasks(session.user.id),
+              loadGymSplit(session.user.id),
+              loadTodayWorkout(session.user.id),
+            ])
+          } catch (dataErr) {
+            console.error('Data loading error:', dataErr)
+          }
+
+          const currentPath = window.location.pathname
+          if (currentPath === '/login' ||
+              currentPath === '/signup' ||
+              currentPath === '/') {
+            if (!onboardingDone) {
+              navigate('/onboarding', { replace: true })
+            } else {
               navigate('/dashboard', { replace: true })
             }
           }
-        } catch (err) {
-          console.error('Session init error:', err)
+        } else {
+          setIsAuthenticated(false)
+          setOnboardingCompleted(null)
         }
+      } catch (err) {
+        console.error('Session init error:', err)
+        setIsAuthenticated(false)
+        setOnboardingCompleted(null)
+      } finally {
+        // ALWAYS set loading false — no matter what happens
+        setIsLoading(false)
       }
-
-      setIsLoading(false)
     }
 
     initializeAuth()
