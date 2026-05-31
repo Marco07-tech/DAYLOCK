@@ -42,13 +42,20 @@ export default function AuthCallback() {
 
     const handleCallback = async () => {
       try {
-        // PKCE flow: exchange code from URL for session
+        console.log('AuthCallback: URL search params:', window.location.search)
+        console.log('AuthCallback: URL hash:', window.location.hash)
+
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
+        console.log('AuthCallback: code found:', !!code)
 
         if (code) {
-          // Exchange the code for a session
+          console.log('AuthCallback: exchanging code for session...')
           const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          console.log('AuthCallback: exchange result:', {
+            hasSession: !!data?.session,
+            error: error?.message,
+          })
 
           if (error || !data.session) {
             console.error('Code exchange failed:', error)
@@ -60,22 +67,31 @@ export default function AuthCallback() {
           return
         }
 
-        // Fallback: try getSession
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession()
+        // Check for hash-based token (implicit flow fallback)
+        const hashParams = new URLSearchParams(window.location.hash.slice(1))
+        const accessToken = hashParams.get('access_token')
+        console.log('AuthCallback: access_token in hash:', !!accessToken)
 
-        if (error || !session) {
-          console.error('No session:', error)
-          navigate('/login')
-          return
+        if (accessToken) {
+          // Small delay to let Supabase process the hash
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          const {
+            data: { session },
+            error,
+          } = await supabase.auth.getSession()
+          console.log('AuthCallback: session from hash:', !!session, error?.message)
+
+          if (session) {
+            await handleSession(session)
+            return
+          }
         }
 
-        await handleSession(session)
+        console.error('No session: null')
+        navigate('/login')
       } catch (err) {
         console.error('Callback error:', err)
-        navigate('/login')
+          navigate('/login')
       }
     }
 

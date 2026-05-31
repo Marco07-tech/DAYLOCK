@@ -174,6 +174,10 @@ function AppRouter() {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth event:', event, session?.user?.email)
 
+      // Don't handle SIGNED_IN here if AuthCallback is handling it
+      const isCallbackPage = window.location.pathname === '/auth/callback'
+      if (isCallbackPage) return
+
       if (event === 'SIGNED_IN' && session) {
         try {
           const { data: profile } = await supabase
