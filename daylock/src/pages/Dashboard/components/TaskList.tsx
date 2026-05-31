@@ -1,9 +1,13 @@
-import { useTaskStore } from '../../../store/useTaskStore';
-import { TaskCard } from './TaskCard';
+import { useTaskStore } from '../../../store/useTaskStore'
+import { TaskCard } from './TaskCard'
 
-export function TaskList() {
-  const getTodayTasks = useTaskStore((state) => state.getTodayTasks);
-  const todayTasks = getTodayTasks();
+interface TaskListProps {
+  onToast: (message: string, variant?: 'success' | 'error') => void
+}
+
+export function TaskList({ onToast }: TaskListProps) {
+  const getTodayTasks = useTaskStore((state) => state.getTodayTasks)
+  const todayTasks = getTodayTasks()
 
   if (todayTasks.length === 0) {
     return (
@@ -17,8 +21,8 @@ export function TaskList() {
   return (
     <div className="space-y-2">
       {todayTasks.map((task) => (
-        <TaskCard key={task.id} task={task} />
+        <TaskCard key={task.id} task={task} onToast={onToast} />
       ))}
     </div>
-  );
+  )
 }

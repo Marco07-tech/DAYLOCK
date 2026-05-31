@@ -1,85 +1,177 @@
-import { Check } from 'lucide-react'
+import { useState } from 'react'
+import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Task } from '../../../types/index'
 import { useTaskStore } from '../../../store/useTaskStore'
 import { useAuthStore } from '../../../store/useAuthStore'
 import { cn } from '../../../lib/utils'
+import { Button } from '../../../components/ui/Button'
 
 interface TaskCardProps {
-  task: Task;
+  task: Task
+  onToast: (message: string, variant?: 'success' | 'error') => void
 }
 
-export function TaskCard({ task }: TaskCardProps) {
-  const navigate = useNavigate();
+export function TaskCard({ task, onToast }: TaskCardProps) {
+  const navigate = useNavigate()
   const toggleTaskDone = useTaskStore((state) => state.toggleTaskDone)
+  const removeTask = useTaskStore((state) => state.removeTask)
   const todayLog = useTaskStore((state) => state.todayLog)
   const user = useAuthStore((state) => state.user)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
-  const isDone = todayLog[task.id] || false;
-  const streak = task.streak;
-  const hasHighStreak = streak >= 7;
+  const isDone = todayLog[task.id] || false
+  const streak = task.streak
+  const hasHighStreak = streak >= 7
+
+  const handleDelete = async () => {
+    if (!user || deleting) return
+
+    setDeleting(true)
+    const success = await removeTask(task.id, user.id)
+    setDeleting(false)
+    setShowDeleteConfirm(false)
+    setMenuOpen(false)
+
+    if (success) {
+      onToast('Habit deleted successfully', 'success')
+    } else {
+      onToast('Failed to delete habit', 'error')
+    }
+  }
 
   return (
-    <div
-      className={cn(
-        'bg-bg-card border border-bg-border rounded-2xl p-3.5 px-4 flex items-start gap-3',
-        'border-l-2 transition-all duration-200 hover:border-bg-border',
-        isDone ? 'border-l-transparent' : 'border-l-accent-lime border-l-opacity-25'
-      )}
-    >
-      {/* Checkbox */}
-      <button
-        onClick={async () => {
-          if (!user) return
-          await toggleTaskDone(task.id, user.id)
-        }}
-        className={cn(
-          'w-8 h-8 rounded-full border-[1.5px] flex-shrink-0 flex items-center justify-center',
-          'transition-all duration-200 active:scale-95',
-          isDone
-            ? 'bg-accent-lime border-accent-lime'
-            : 'border-bg-border bg-transparent hover:border-bg-border'
-        )}
-      >
-        {isDone && <Check size={16} className="text-black" />}
-      </button>
-
-      {/* Task Info */}
-      <div className="flex-1 min-w-0">
-        <p
-          className={cn(
-            'text-sm font-medium',
-            isDone ? 'text-text-muted line-through' : 'text-white'
-          )}
-        >
-          {task.name}
-        </p>
-        <p className="text-xs text-text-secondary mt-0.5">
-          {task.scheduledTime || 'No time set'} • {task.type}
-        </p>
-
-        {task.type === 'gym' && (
-          <button
-            onClick={() => navigate('/gym')}
-            className="text-xs text-accent-lime hover:text-accent-lime-dark transition-colors mt-1"
-          >
-            Tap to log workout →
-          </button>
-        )}
-      </div>
-
-      {/* Streak Badge */}
+    <>
       <div
         className={cn(
-          'px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0',
-          hasHighStreak
-            ? 'bg-accent-lime-muted text-accent-lime border border-accent-lime border-opacity-20'
-            : 'bg-bg-card text-text-secondary border border-bg-border'
+          'relative bg-bg-card border border-bg-border rounded-2xl p-3.5 pl-4 pr-12 flex items-start gap-3',
+          'border-l-2 transition-all duration-200 hover:border-bg-border',
+          isDone ? 'border-l-transparent' : 'border-l-accent-lime border-l-opacity-25'
         )}
       >
-        {hasHighStreak && '🔥 '}
-        {streak}d
+        {/* Checkbox */}
+        <button
+          onClick={async () => {
+            if (!user) return
+            await toggleTaskDone(task.id, user.id)
+          }}
+          className={cn(
+            'w-8 h-8 rounded-full border-[1.5px] flex-shrink-0 flex items-center justify-center',
+            'transition-all duration-200 active:scale-95',
+            isDone
+              ? 'bg-accent-lime border-accent-lime'
+              : 'border-bg-border bg-transparent hover:border-bg-border'
+          )}
+        >
+          {isDone && <Check size={16} className="text-black" />}
+        </button>
+
+        {/* Task Info */}
+        <div className="flex-1 min-w-0">
+          <p
+            className={cn(
+              'text-sm font-medium',
+              isDone ? 'text-text-muted line-through' : 'text-white'
+            )}
+          >
+            {task.name}
+          </p>
+          <p className="text-xs text-text-secondary mt-0.5">
+            {task.scheduledTime || 'No time set'} • {task.type}
+          </p>
+
+          {task.type === 'gym' && (
+            <button
+              onClick={() => navigate('/gym')}
+              className="text-xs text-accent-lime hover:text-accent-lime-dark transition-colors mt-1"
+            >
+              Tap to log workout →
+            </button>
+          )}
+        </div>
+
+        {/* Streak Badge */}
+        <div
+          className={cn(
+            'px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0',
+            hasHighStreak
+              ? 'bg-accent-lime-muted text-accent-lime border border-accent-lime border-opacity-20'
+              : 'bg-bg-card text-text-secondary border border-bg-border'
+          )}
+        >
+          {hasHighStreak && '🔥 '}
+          {streak}d
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          className="absolute right-2 top-2 h-8 w-8 rounded-full border border-bg-border bg-bg-primary text-text-secondary flex items-center justify-center active:scale-95 transition-colors hover:border-accent-lime hover:text-white"
+          aria-label="Habit menu"
+        >
+          <MoreVertical size={16} />
+        </button>
+
+        {menuOpen && (
+          <div className="absolute right-2 top-11 z-20 w-40 overflow-hidden rounded-2xl border border-bg-border bg-[#11131A] shadow-2xl">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false)
+                onToast('Edit Habit is coming soon', 'error')
+              }}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white transition-colors hover:bg-bg-card"
+            >
+              <Pencil size={14} className="text-text-secondary" />
+              Edit Habit
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false)
+                setShowDeleteConfirm(true)
+              }}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-status-danger transition-colors hover:bg-[rgba(239,68,68,0.1)]"
+            >
+              <Trash2 size={14} className="text-status-danger" />
+              Delete Habit
+            </button>
+          </div>
+        )}
       </div>
-    </div>
-  );
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 pb-4 sm:items-center sm:pb-0">
+          <div className="w-full max-w-sm rounded-3xl border border-bg-border bg-bg-secondary p-5 shadow-2xl">
+            <h3 className="font-display text-xl text-white">Delete Habit?</h3>
+            <p className="mt-2 text-sm text-text-secondary">
+              This will permanently remove this habit from your routine.
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <Button
+                variant="secondary"
+                className="w-full"
+                disabled={deleting}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                className="w-full"
+                isLoading={deleting}
+                disabled={deleting}
+                onClick={() => void handleDelete()}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }

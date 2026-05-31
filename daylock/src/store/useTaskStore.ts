@@ -22,7 +22,7 @@ interface TaskState {
   loadTasks: (userId: string) => Promise<void>
   loadDailyLogs: (userId: string, fromDate?: string, toDate?: string) => Promise<void>
   addTask: (task: Omit<Task, 'id' | 'streak' | 'done'>, userId: string) => Promise<void>
-  removeTask: (id: string, userId: string) => Promise<void>
+  removeTask: (id: string, userId: string) => Promise<boolean>
   toggleTaskDone: (id: string, userId: string) => Promise<void>
   getTodayTasks: () => Task[]
   getCompletionPercent: () => number
@@ -298,15 +298,24 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         }
       })
 
-      const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', userId)
+      const [taskResult, completionsResult] = await Promise.all([
+        supabase.from('tasks').delete().eq('id', id).eq('user_id', userId),
+        supabase.from('task_completions').delete().eq('task_id', id).eq('user_id', userId),
+      ])
 
-      if (error && import.meta.env.DEV) {
-        console.error('Failed to remove task:', error)
+      if (taskResult.error || completionsResult.error) {
+        if (import.meta.env.DEV) {
+          console.error('Failed to remove task:', taskResult.error ?? completionsResult.error)
+        }
+        return false
       }
+
+      return true
     } catch (err) {
       if (import.meta.env.DEV) {
         console.error('Error removing task:', err)
       }
+      return false
     }
   },
 

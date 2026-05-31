@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useTaskStore } from '../../store/useTaskStore';
@@ -11,11 +11,17 @@ import { TaskList } from './components/TaskList';
 import { AddTaskSheet } from '../AddTask/AddTaskSheet';
 
 export function DashboardPage() {
-  const [showAddTask, setShowAddTask] = useState(false);
-  const user = useAuthStore((state) => state.user);
-  const getTodayTasks = useTaskStore((state) => state.getTodayTasks);
-  const getCompletionPercent = useTaskStore((state) => state.getCompletionPercent);
-  const initTodayWorkout = useGymStore((state) => state.initTodayWorkout);
+  const [showAddTask, setShowAddTask] = useState(false)
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+  const user = useAuthStore((state) => state.user)
+  const getTodayTasks = useTaskStore((state) => state.getTodayTasks)
+  const getCompletionPercent = useTaskStore((state) => state.getCompletionPercent)
+  const initTodayWorkout = useGymStore((state) => state.initTodayWorkout)
+
+  const handleToast = (message: string, variant: 'success' | 'error' = 'success') => {
+    setToast({ message, variant })
+    window.setTimeout(() => setToast(null), 2200)
+  }
 
   useEffect(() => {
     // Initialize today's tasks and check for gym
@@ -59,8 +65,22 @@ export function DashboardPage() {
         </div>
 
         {/* Task List */}
-        <TaskList />
+        <TaskList onToast={handleToast} />
       </div>
+
+      {toast && (
+        <div className="fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
+          <div
+            className={`rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md ${
+              toast.variant === 'success'
+                ? 'border-[rgba(168,255,62,0.25)] bg-[#11150F] text-accent-lime'
+                : 'border-[rgba(239,68,68,0.25)] bg-[#1A0F10] text-status-danger'
+            }`}
+          >
+            <p className="text-sm font-medium">{toast.message}</p>
+          </div>
+        </div>
+      )}
 
       {/* Floating Action Button */}
       <button
@@ -74,5 +94,5 @@ export function DashboardPage() {
       {/* Add Task Sheet */}
       <AddTaskSheet open={showAddTask} onClose={() => setShowAddTask(false)} />
     </div>
-  );
+  )
 }
