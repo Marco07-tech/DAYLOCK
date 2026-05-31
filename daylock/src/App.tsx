@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './store/useAuthStore'
 import { useTaskStore } from './store/useTaskStore'
 import { useGymStore } from './store/useGymStore'
@@ -7,6 +7,7 @@ import { supabase } from './lib/supabase'
 import { AppShell } from './components/layout/AppShell'
 import { LoginPage } from './pages/Auth/LoginPage'
 import { SignupPage } from './pages/Auth/SignupPage'
+import AuthCallback from './pages/Auth/AuthCallback'
 import { OnboardingPage } from './pages/Onboarding/OnboardingPage'
 import { DashboardPage } from './pages/Dashboard/DashboardPage'
 import { GymPage } from './pages/Gym/GymPage'
@@ -237,6 +238,7 @@ function AppRouter() {
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
         path="/onboarding"
         element={
@@ -282,9 +284,7 @@ function AppRouter() {
 }
 
 export function App() {
-  return (
-    <Router>
-      <AppRouter />
-    </Router>
-  )
+  return <AppRouter />
 }
+
+export default App
