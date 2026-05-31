@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import type { Session } from '@supabase/supabase-js'
 import { useAuthStore } from './store/useAuthStore'
 import { supabase } from './lib/supabase'
 import { getPostAuthPath } from './lib/profile'
-import { clearAuthStores, syncSessionToStores } from './lib/sessionSync'
+import { clearAuthStores, syncAuthSession, loadUserDataStores } from './lib/sessionSync'
+import { startupLog } from './lib/startupLog'
 import { AppShell } from './components/layout/AppShell'
 import { LoginPage } from './pages/Auth/LoginPage'
 import { SignupPage } from './pages/Auth/SignupPage'
@@ -104,76 +106,118 @@ function RootRedirect() {
 
 function AppRouter() {
   const navigate = useNavigate()
-  const setIsLoading = useAuthStore((state) => state.setIsLoading)
 
   useEffect(() => {
+    startupLog('App auth effect mounted', { path: window.location.pathname })
+    let cancelled = false
+
+    const finishAuthLoading = () => {
+      startupLog('setIsLoading(false)')
+      useAuthStore.getState().setIsLoading(false)
+    }
+
+    const applySession = (session: Session | null, source: string) => {
+      startupLog('applySession invoked', { source, hasSession: !!session, userId: session?.user?.id })
+
+      void (async () => {
+        try {
+          if (session) {
+            const { onboardingCompleted } = await syncAuthSession(session)
+
+            const path = window.location.pathname
+            if (!cancelled && (path === '/login' || path === '/signup' || path === '/')) {
+              navigate(getPostAuthPath(onboardingCompleted), { replace: true })
+            }
+
+            if (source === 'INITIAL_SESSION' || source === 'SIGNED_IN') {
+              finishAuthLoading()
+              void loadUserDataStores(session.user.id).catch((err) => {
+                startupLog('loadUserDataStores failed', err)
+              })
+            }
+          } else {
+            clearAuthStores()
+            finishAuthLoading()
+          }
+        } catch (err) {
+          startupLog('applySession error', { source, err })
+          clearAuthStores()
+          finishAuthLoading()
+        }
+      })()
+    }
+
     const hashParams = new URLSearchParams(window.location.hash.slice(1))
     if (hashParams.get('access_token')) {
       window.history.replaceState(null, '', window.location.pathname)
     }
 
-    const initializeAuth = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-
-        if (session?.user) {
-          const { onboardingCompleted } = await syncSessionToStores(session)
-
-          const currentPath = window.location.pathname
-          if (currentPath === '/login' || currentPath === '/signup' || currentPath === '/') {
-            navigate(getPostAuthPath(onboardingCompleted), { replace: true })
-          }
-        } else {
-          clearAuthStores()
-        }
-      } catch (err) {
-        if (import.meta.env.DEV) {
-          console.error('Session init error:', err)
-        }
-        clearAuthStores()
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    initializeAuth()
+    startupLog('onAuthStateChange registering')
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (import.meta.env.DEV) {
-        console.debug('Auth event:', event)
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') {
+        startupLog('INITIAL_SESSION received', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+        })
+      } else {
+        startupLog('onAuthStateChange event', { event, hasSession: !!session })
       }
 
-      if (window.location.pathname === '/auth/callback') {
+      if (event === 'INITIAL_SESSION') {
+        applySession(session, 'INITIAL_SESSION')
         return
-      }
-
-      if (event === 'SIGNED_IN' && session) {
-        try {
-          const { onboardingCompleted } = await syncSessionToStores(session)
-          const authPaths = ['/login', '/signup', '/']
-          if (authPaths.includes(window.location.pathname)) {
-            navigate(getPostAuthPath(onboardingCompleted), { replace: true })
-          }
-        } catch (err) {
-          if (import.meta.env.DEV) {
-            console.error('Auth state change error:', err)
-          }
-        }
       }
 
       if (event === 'SIGNED_OUT') {
         clearAuthStores()
-        setIsLoading(false)
-        navigate('/login', { replace: true })
+        finishAuthLoading()
+        if (!cancelled) {
+          navigate('/login', { replace: true })
+        }
+        return
+      }
+
+      if (event === 'SIGNED_IN' && session) {
+        setTimeout(() => {
+          if (cancelled) return
+          const onAuthPage = ['/login', '/signup', '/'].includes(window.location.pathname)
+          const needsSync = onAuthPage || !useAuthStore.getState().isAuthenticated
+          if (needsSync) {
+            applySession(session, 'SIGNED_IN')
+          }
+        }, 0)
       }
     })
 
-    return () => subscription.unsubscribe()
-  }, [navigate, setIsLoading])
+    startupLog('onAuthStateChange registered')
+
+    setTimeout(() => {
+      void supabase.auth.getSession().then(({ data: { session }, error }) => {
+        startupLog('getSession result', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          error: error?.message,
+        })
+      })
+    }, 0)
+
+    const safetyTimer = window.setTimeout(() => {
+      if (useAuthStore.getState().isLoading) {
+        startupLog('safety timeout 15s — setIsLoading(false)')
+        finishAuthLoading()
+      }
+    }, 15_000)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(safetyTimer)
+      subscription.unsubscribe()
+      startupLog('App auth effect cleanup')
+    }
+  }, [navigate])
 
   return (
     <Routes>
@@ -241,6 +285,7 @@ function AppRouter() {
 }
 
 export function App() {
+  startupLog('App mounted')
   return <AppRouter />
 }
 

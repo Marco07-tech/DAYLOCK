@@ -1,6 +1,7 @@
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import type { User } from '../types/index'
+import { traceAwait } from './syncTrace'
 
 export type ProfileRecord = {
   id: string
@@ -20,11 +21,9 @@ export function displayNameFromAuthUser(user: SupabaseUser, fallback = 'User'): 
 }
 
 export async function fetchProfile(userId: string): Promise<ProfileRecord | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle()
+  const { data, error } = await traceAwait('fetchProfile', () =>
+    supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+  )
 
   if (error) {
     if (import.meta.env.DEV) {
@@ -43,16 +42,18 @@ export async function ensureProfile(userId: string, name: string): Promise<Profi
   }
 
   const createdAt = new Date().toISOString()
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert({
-      id: userId,
-      name,
-      onboarding_completed: false,
-      created_at: createdAt,
-    })
-    .select('*')
-    .single()
+  const { data, error } = await traceAwait('profiles.insert', () =>
+    supabase
+      .from('profiles')
+      .insert({
+        id: userId,
+        name,
+        onboarding_completed: false,
+        created_at: createdAt,
+      })
+      .select('*')
+      .single()
+  )
 
   if (error) {
     if (import.meta.env.DEV) {

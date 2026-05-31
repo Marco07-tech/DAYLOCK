@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { getPostAuthPath } from '../../lib/profile'
-import { syncSessionToStores } from '../../lib/sessionSync'
+import { syncAuthSession, loadUserDataStores } from '../../lib/sessionSync'
 import { useAuthStore } from '../../store/useAuthStore'
 
 export default function AuthCallback() {
@@ -27,7 +27,9 @@ export default function AuthCallback() {
             return
           }
 
-          const { onboardingCompleted } = await syncSessionToStores(data.session)
+          const { onboardingCompleted } = await syncAuthSession(data.session)
+          setIsLoading(false)
+          void loadUserDataStores(data.session.user.id)
           navigate(getPostAuthPath(onboardingCompleted), { replace: true })
           return
         }
@@ -41,7 +43,9 @@ export default function AuthCallback() {
           } = await supabase.auth.getSession()
 
           if (session) {
-            const { onboardingCompleted } = await syncSessionToStores(session)
+            const { onboardingCompleted } = await syncAuthSession(session)
+            setIsLoading(false)
+            void loadUserDataStores(session.user.id)
             navigate(getPostAuthPath(onboardingCompleted), { replace: true })
             return
           }

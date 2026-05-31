@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Task } from '../types/index'
 import { getDayName } from '../lib/utils'
 import { getTodayIsoDate } from '../lib/dates'
+import { syncTrace, traceAwait } from '../lib/syncTrace'
 
 export type DailyLogRow = {
   date: string
@@ -35,11 +36,13 @@ async function loadTodayCompletions(
   userId: string,
   today: string
 ): Promise<Record<string, boolean>> {
-  const { data, error } = await supabase
-    .from('task_completions')
-    .select('task_id, completed')
-    .eq('user_id', userId)
-    .eq('date', today)
+  const { data, error } = await traceAwait('task_completions.select', () =>
+    supabase
+      .from('task_completions')
+      .select('task_id, completed')
+      .eq('user_id', userId)
+      .eq('date', today)
+  )
 
   if (error) {
     // Table may not exist until migration is applied — fail gracefully
@@ -68,13 +71,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   loadTasks: async (userId: string) => {
     try {
+      syncTrace('loadTasks', 'before', { userId })
       set({ isLoading: true, userId })
       const today = getTodayIsoDate()
 
       const [tasksResult, todayLog] = await Promise.all([
-        supabase.from('tasks').select('*').eq('user_id', userId).order('created_at'),
+        traceAwait('loadTasks.tasks.select', () =>
+          supabase.from('tasks').select('*').eq('user_id', userId).order('created_at')
+        ),
         loadTodayCompletions(userId, today),
       ])
+      syncTrace('loadTasks.parallel', 'after', {
+        taskCount: tasksResult.data?.length ?? 0,
+        completionKeys: Object.keys(todayLog).length,
+      })
 
       if (tasksResult.error) {
         if (import.meta.env.DEV) {
@@ -119,16 +129,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       } else {
         set({ isLoading: false })
       }
+      syncTrace('loadTasks', 'after', { userId })
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.error('Error loading tasks:', err)
-      }
+      syncTrace('loadTasks', 'error', err)
       set({ isLoading: false })
     }
   },
 
   loadDailyLogs: async (userId: string, fromDate?: string, toDate?: string) => {
     try {
+      syncTrace('loadDailyLogs', 'before', { userId })
       const end = toDate ?? getTodayIsoDate()
       const start =
         fromDate ??
@@ -138,13 +148,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           return d.toISOString().split('T')[0]
         })()
 
-      const { data, error } = await supabase
-        .from('daily_logs')
-        .select('date, completion_percent, tasks_done, tasks_total')
-        .eq('user_id', userId)
-        .gte('date', start)
-        .lte('date', end)
-        .order('date')
+      const { data, error } = await traceAwait('loadDailyLogs.select', () =>
+        supabase
+          .from('daily_logs')
+          .select('date, completion_percent, tasks_done, tasks_total')
+          .eq('user_id', userId)
+          .gte('date', start)
+          .lte('date', end)
+          .order('date')
+      )
 
       if (error) {
         if (import.meta.env.DEV) {
@@ -154,10 +166,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       }
 
       set({ dailyLogs: (data as DailyLogRow[]) ?? [] })
+      syncTrace('loadDailyLogs', 'after', { rows: data?.length ?? 0 })
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.error('Error loading daily logs:', err)
-      }
+      syncTrace('loadDailyLogs', 'error', err)
     }
   },
 

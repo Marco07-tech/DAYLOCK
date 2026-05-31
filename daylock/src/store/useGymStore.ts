@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import type { WorkoutLog, GymSplit, WeeklySplit, Exercise, Set } from '../types/index'
 import { getDayName, formatDate } from '../lib/utils'
+import { syncTrace, traceAwait } from '../lib/syncTrace'
 
 const DEFAULT_EXERCISES_BY_SPLIT: Record<GymSplit, Omit<Exercise, 'id' | 'sets'>[]> = {
   Push: [
@@ -71,42 +72,47 @@ export const useGymStore = create<GymState>((set, get) => ({
 
   loadGymSplit: async (userId: string) => {
     try {
+      syncTrace('loadGymSplit', 'before', { userId })
       set({ isLoading: true, userId })
-      const { data, error } = await supabase
-        .from('gym_splits')
-        .select('*')
-        .eq('user_id', userId)
+      const { data, error } = await traceAwait('loadGymSplit.select', () =>
+        supabase.from('gym_splits').select('*').eq('user_id', userId)
+      )
 
       if (error && import.meta.env.DEV) {
         console.error('Failed to load gym split:', error)
-        // Use defaults if load fails
         set({ isLoading: false })
+        syncTrace('loadGymSplit', 'error', error)
         return
       }
 
       if (data && data.length > 0) {
-        // Map DB records to WeeklySplit object
         const split: WeeklySplit = { ...DEFAULT_WEEKLY_SPLIT }
-        data.forEach((record: any) => {
+        data.forEach((record: { day_name: string; split_name: string }) => {
           split[record.day_name as keyof WeeklySplit] = record.split_name as GymSplit
         })
         set({ weeklySplit: split, isLoading: false })
+        syncTrace('loadGymSplit', 'after', { mode: 'existing', rows: data.length })
       } else {
-        // Save defaults to DB if first time
-        for (const [day, splitName] of Object.entries(DEFAULT_WEEKLY_SPLIT)) {
-          await supabase.from('gym_splits').upsert(
-            {
-              user_id: userId,
-              day_name: day,
-              split_name: splitName,
-            },
-            { onConflict: 'user_id,day_name' }
+        syncTrace('loadGymSplit.seedDefaults', 'before', { days: 7 })
+        await Promise.all(
+          Object.entries(DEFAULT_WEEKLY_SPLIT).map(([day, splitName]) =>
+            traceAwait(`loadGymSplit.upsert.${day}`, () =>
+              supabase.from('gym_splits').upsert(
+                {
+                  user_id: userId,
+                  day_name: day,
+                  split_name: splitName,
+                },
+                { onConflict: 'user_id,day_name' }
+              )
+            )
           )
-        }
+        )
         set({ weeklySplit: DEFAULT_WEEKLY_SPLIT, isLoading: false })
+        syncTrace('loadGymSplit', 'after', { mode: 'seeded' })
       }
     } catch (err) {
-      console.error('Error loading gym split:', err)
+      syncTrace('loadGymSplit', 'error', err)
       set({ isLoading: false })
     }
   },
@@ -137,19 +143,22 @@ export const useGymStore = create<GymState>((set, get) => ({
 
   loadTodayWorkout: async (userId: string) => {
     try {
+      syncTrace('loadTodayWorkout', 'before', { userId })
       set({ isLoading: true })
       const today = new Date().toISOString().split('T')[0]
-      const { data, error } = await supabase
-        .from('workout_logs')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('date', today)
-        .maybeSingle()
+      const { data, error } = await traceAwait('loadTodayWorkout.select', () =>
+        supabase
+          .from('workout_logs')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('date', today)
+          .maybeSingle()
+      )
 
       if (error && error.code !== 'PGRST116') {
-        // PGRST116 = not found, which is expected
-        console.error('Failed to load today workout:', error)
-        set({ isLoading: false })
+        if (import.meta.env.DEV) {
+          console.error('Failed to load today workout:', error)
+        }
         return
       }
 
@@ -162,19 +171,23 @@ export const useGymStore = create<GymState>((set, get) => ({
           completed: data.completed,
           createdAt: data.created_at,
         }
-        set({ todayWorkout: workout, isLoading: false })
+        set({ todayWorkout: workout })
+        syncTrace('loadTodayWorkout', 'after', { mode: 'existing' })
       } else {
-        // No workout for today, create one
+        syncTrace('loadTodayWorkout.init', 'before')
         await get().initTodayWorkout(userId)
+        syncTrace('loadTodayWorkout', 'after', { mode: 'created' })
       }
     } catch (err) {
-      console.error('Error loading today workout:', err)
+      syncTrace('loadTodayWorkout', 'error', err)
+    } finally {
       set({ isLoading: false })
     }
   },
 
   initTodayWorkout: async (userId: string) => {
     try {
+      syncTrace('initTodayWorkout', 'before', { userId })
       const state = get()
       const today = getDayName()
       const dayKey = today as keyof WeeklySplit
@@ -196,21 +209,27 @@ export const useGymStore = create<GymState>((set, get) => ({
       }
 
       const isoDate = new Date().toISOString().split('T')[0]
-      const { data, error } = await supabase
-        .from('workout_logs')
-        .upsert({
-          user_id: userId,
-          date: isoDate,
-          split_name: splitName,
-          exercises,
-          completed: false,
-        }, { onConflict: 'user_id,date' })
-        .select()
-        .single()
+      const { data, error } = await traceAwait('initTodayWorkout.upsert', () =>
+        supabase
+          .from('workout_logs')
+          .upsert(
+            {
+              user_id: userId,
+              date: isoDate,
+              split_name: splitName,
+              exercises,
+              completed: false,
+            },
+            { onConflict: 'user_id,date' }
+          )
+          .select()
+          .single()
+      )
 
       if (error) {
-        console.error('Failed to create workout:', error)
-        // Fall back to local-only state
+        if (import.meta.env.DEV) {
+          console.error('Failed to create workout:', error)
+        }
         set({
           todayWorkout: {
             date: formatDate(),
@@ -218,6 +237,7 @@ export const useGymStore = create<GymState>((set, get) => ({
             exercises,
             completed: false,
           },
+          isLoading: false,
         })
         return
       }
@@ -231,10 +251,12 @@ export const useGymStore = create<GymState>((set, get) => ({
           completed: data.completed,
           createdAt: data.created_at,
         }
-        set({ todayWorkout: workout })
+        set({ todayWorkout: workout, isLoading: false })
       }
+      syncTrace('initTodayWorkout', 'after', { userId })
     } catch (err) {
-      console.error('Error initializing today workout:', err)
+      syncTrace('initTodayWorkout', 'error', err)
+      set({ isLoading: false })
     }
   },
 

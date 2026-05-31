@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { fetchProfile } from '../lib/profile'
-import { syncSessionToStores } from '../lib/sessionSync'
+import { syncAuthSession, loadUserDataStores } from '../lib/sessionSync'
 import type { User } from '../types/index'
 
 interface AuthState {
@@ -82,8 +82,9 @@ export const useAuthStore = create<AuthState>((set) => {
           return
         }
 
-        await syncSessionToStores(data.session)
+        await syncAuthSession(data.session)
         set({ isLoading: false })
+        void loadUserDataStores(data.session.user.id)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Login failed'
         set({ error: message, isLoading: false })
@@ -120,8 +121,9 @@ export const useAuthStore = create<AuthState>((set) => {
           return
         }
 
-        await syncSessionToStores(data.session)
+        await syncAuthSession(data.session)
         set({ isLoading: false })
+        void loadUserDataStores(data.session.user.id)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Signup failed'
         set({ error: message, isLoading: false })
