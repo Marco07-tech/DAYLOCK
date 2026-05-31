@@ -137,7 +137,7 @@ export function OnboardingPage() {
     }, 200)
   }
 
-  const finishOnboarding = async (skipSleepTask = false) => {
+  const finishOnboarding = async () => {
     try {
       await supabase
         .from('profiles')
@@ -150,23 +150,30 @@ export function OnboardingPage() {
       setUser({ ...user, name })
       setOnboardingCompleted(true)
 
-      if (!skipSleepTask && wakeTime && sleepTime) {
-        await addTask(
-          {
-            type: 'sleep',
-            name: `Sleep by ${sleepTime}`,
-            icon: 'moon',
-            meta: `Wake: ${wakeTime} · Bed: ${sleepTime}`,
-            scheduledDays: ALL_DAYS,
-            scheduledTime: sleepTime,
-          } as Omit<Task, 'id' | 'streak' | 'done'>,
-          user.id
-        )
+      if (wakeTime && sleepTime) {
+        try {
+          await addTask(
+            {
+              type: 'sleep',
+              name: `Sleep by ${sleepTime}`,
+              icon: 'moon',
+              meta: `Wake: ${wakeTime} · Bed: ${sleepTime}`,
+              scheduledDays: ALL_DAYS,
+              scheduledTime: sleepTime,
+            } as Omit<Task, 'id' | 'streak' | 'done'>,
+            user.id
+          )
+        } catch (taskErr) {
+          console.error('Sleep task creation failed:', taskErr)
+          // Continue even if task creation fails
+        }
       }
 
       navigate('/dashboard', { replace: true })
     } catch (err) {
       console.error('Onboarding error:', err)
+      // Navigate anyway
+      navigate('/dashboard', { replace: true })
     }
   }
 
@@ -318,14 +325,14 @@ export function OnboardingPage() {
 
             <button
               type="button"
-              onClick={() => finishOnboarding(true)}
+              onClick={() => finishOnboarding()}
               className="mt-5 mb-3 text-center text-[13px] text-[#4A4A5A] transition-colors hover:text-white"
             >
               Skip for now
             </button>
 
             <Button
-              onClick={() => finishOnboarding(false)}
+              onClick={() => finishOnboarding()}
               className="w-full"
               size="lg"
             >

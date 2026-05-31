@@ -144,7 +144,7 @@ export const useGymStore = create<GymState>((set, get) => ({
         .select('*')
         .eq('user_id', userId)
         .eq('date', today)
-        .single()
+        .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
         // PGRST116 = not found, which is expected
@@ -198,13 +198,13 @@ export const useGymStore = create<GymState>((set, get) => ({
       const isoDate = new Date().toISOString().split('T')[0]
       const { data, error } = await supabase
         .from('workout_logs')
-        .insert({
+        .upsert({
           user_id: userId,
           date: isoDate,
           split_name: splitName,
           exercises,
           completed: false,
-        })
+        }, { onConflict: 'user_id,date' })
         .select()
         .single()
 
