@@ -77,7 +77,7 @@ export const useGymStore = create<GymState>((set, get) => ({
         .select('*')
         .eq('user_id', userId)
 
-      if (error) {
+      if (error && import.meta.env.DEV) {
         console.error('Failed to load gym split:', error)
         // Use defaults if load fails
         set({ isLoading: false })
@@ -379,18 +379,21 @@ export const useGymStore = create<GymState>((set, get) => ({
   _saveWorkoutDebounced: async () => {
     try {
       const state = get()
-      if (!state.todayWorkout) return
+      if (!state.todayWorkout?.id || !state.userId) return
 
       const { error } = await supabase
         .from('workout_logs')
         .update({ exercises: state.todayWorkout.exercises })
         .eq('id', state.todayWorkout.id)
+        .eq('user_id', state.userId)
 
-      if (error) {
+      if (error && import.meta.env.DEV) {
         console.error('Failed to save workout:', error)
       }
     } catch (err) {
-      console.error('Error saving workout:', err)
+      if (import.meta.env.DEV) {
+        console.error('Error saving workout:', err)
+      }
     }
   },
 }))

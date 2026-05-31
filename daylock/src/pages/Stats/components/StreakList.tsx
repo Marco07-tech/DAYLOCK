@@ -1,5 +1,3 @@
-'use client';
-
 import { Dumbbell, BookOpen, Droplet, Moon, Activity, Star } from 'lucide-react';
 import { useTaskStore } from '../../../store/useTaskStore';
 import type { TaskType } from '../../../types';

@@ -4,6 +4,7 @@ import { ArrowLeft, Moon, Sunrise } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { Button } from '../../components/ui/Button'
 import { useAuthStore } from '../../store/useAuthStore'
+import { useTaskStore } from '../../store/useTaskStore'
 
 type Step = 1 | 2 | 3
 type Goal = 'cut' | 'bulk' | 'maintain' | null
@@ -94,6 +95,8 @@ export function OnboardingPage() {
   const [wakeTime, setWakeTime] = useState('')
   const [sleepTime, setSleepTime] = useState('')
   const [isFinishing, setIsFinishing] = useState(false)
+  const [finishError, setFinishError] = useState<string | null>(null)
+  const loadTasks = useTaskStore((state) => state.loadTasks)
 
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -138,52 +141,55 @@ export function OnboardingPage() {
   const finishOnboarding = async () => {
     if (isFinishing) return
     setIsFinishing(true)
-
-    // Set a timeout fallback — navigate no matter what after 3 seconds
-    const fallbackTimer = setTimeout(() => {
-      navigate('/dashboard', { replace: true })
-    }, 3000)
+    setFinishError(null)
 
     try {
       const { error } = await supabase
         .from('profiles')
         .update({
           name,
+          goal: goal ?? null,
           onboarding_completed: true,
         })
         .eq('id', user.id)
 
-      if (error) console.error('Profile update error:', error)
+      if (error) {
+        setFinishError('Could not save your profile. Please try again.')
+        if (import.meta.env.DEV) {
+          console.error('Profile update error:', error)
+        }
+        return
+      }
 
       setUser({ ...user, name })
       setOnboardingCompleted(true)
 
       if (wakeTime && sleepTime) {
-        try {
-          // Use supabase directly instead of store action
-          await supabase.from('tasks').insert({
-            user_id: user.id,
-            type: 'sleep',
-            name: `Sleep by ${sleepTime}`,
-            icon: 'moon',
-            meta: `Wake: ${wakeTime} · Bed: ${sleepTime}`,
-            scheduled_days: ALL_DAYS,
-            scheduled_time: sleepTime,
-            streak: 0,
-            done: false,
-          })
-        } catch (taskErr) {
-          console.error('Sleep task error:', taskErr)
+        const { error: taskError } = await supabase.from('tasks').insert({
+          user_id: user.id,
+          type: 'sleep',
+          name: `Sleep by ${sleepTime}`,
+          icon: 'moon',
+          meta: `Wake: ${wakeTime} · Bed: ${sleepTime}`,
+          scheduled_days: ALL_DAYS,
+          scheduled_time: sleepTime,
+          streak: 0,
+          done: false,
+        })
+
+        if (taskError && import.meta.env.DEV) {
+          console.error('Sleep task error:', taskError)
+        } else {
+          await loadTasks(user.id)
         }
       }
 
-      clearTimeout(fallbackTimer)
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      console.error('Onboarding error:', err)
-      clearTimeout(fallbackTimer)
-      // Navigate anyway
-      navigate('/dashboard', { replace: true })
+      setFinishError('Something went wrong. Please try again.')
+      if (import.meta.env.DEV) {
+        console.error('Onboarding error:', err)
+      }
     } finally {
       setIsFinishing(false)
     }
@@ -343,6 +349,10 @@ export function OnboardingPage() {
             >
               Skip for now
             </button>
+
+            {finishError && (
+              <p className="mb-3 text-center text-sm text-status-danger">{finishError}</p>
+            )}
 
             <Button
               onClick={() => finishOnboarding()}

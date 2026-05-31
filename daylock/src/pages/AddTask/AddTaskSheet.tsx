@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { Dumbbell, BookOpen, Droplet, Moon, Activity, Star } from 'lucide-react'
@@ -89,13 +87,11 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
     }
 
     // Create task object (without id - Supabase will generate it)
-    const newTask: Omit<Task, 'id'> = {
+    const newTask: Omit<Task, 'id' | 'streak' | 'done'> = {
       type: selectedType,
       name: taskName,
       icon: selectedType,
       meta: Object.keys(meta).length > 0 ? meta : undefined,
-      streak: 0,
-      done: false,
       scheduledDays,
       scheduledTime: formData.time || formData.bedtime || '',
     }

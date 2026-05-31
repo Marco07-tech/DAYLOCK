@@ -1,23 +1,16 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/useAuthStore'
 import { signInWithGoogle } from '../../lib/supabase'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 
 export function SignupPage() {
-  const navigate = useNavigate()
-  const { signup, isLoading, isAuthenticated, error, clearError } = useAuthStore()
+  const { signup, isLoading, error, clearError } = useAuthStore()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
-    }
-  }, [isAuthenticated, navigate])
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value)
@@ -42,6 +35,12 @@ export function SignupPage() {
       return
     }
 
+    if (password.length < 6) {
+      clearError()
+      useAuthStore.setState({ error: 'Password must be at least 6 characters.' })
+      return
+    }
+
     await signup(email, password, name)
   }
 
@@ -50,7 +49,9 @@ export function SignupPage() {
     try {
       await signInWithGoogle()
     } catch (googleError) {
-      console.error(googleError)
+      if (import.meta.env.DEV) {
+        console.error(googleError)
+      }
       setGoogleLoading(false)
     }
   }
@@ -58,15 +59,11 @@ export function SignupPage() {
   return (
     <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-4 page-enter">
       <div className="max-w-sm w-full">
-        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="font-display font-bold text-4xl text-accent-lime mb-2">
-            DayLock
-          </h1>
+          <h1 className="font-display font-bold text-4xl text-accent-lime mb-2">DayLock</h1>
           <p className="text-text-muted text-base">Lock in your daily routine</p>
         </div>
 
-        {/* Form Card */}
         <Card className="p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <button
@@ -105,6 +102,7 @@ export function SignupPage() {
                 placeholder="Name"
                 value={name}
                 onChange={handleNameChange}
+                autoComplete="name"
                 className="w-full bg-primary border border-bg-border rounded-xl px-4 py-3 text-white placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
               />
             </div>
@@ -115,6 +113,7 @@ export function SignupPage() {
                 placeholder="Email"
                 value={email}
                 onChange={handleEmailChange}
+                autoComplete="email"
                 className="w-full bg-primary border border-bg-border rounded-xl px-4 py-3 text-white placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
               />
             </div>
@@ -122,36 +121,25 @@ export function SignupPage() {
             <div>
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="Password (min 6 characters)"
                 value={password}
                 onChange={handlePasswordChange}
+                autoComplete="new-password"
                 className="w-full bg-primary border border-bg-border rounded-xl px-4 py-3 text-white placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
               />
             </div>
 
-            {error && (
-              <p className="text-status-danger text-sm text-center">{error}</p>
-            )}
+            {error && <p className="text-status-danger text-sm text-center">{error}</p>}
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              isLoading={isLoading}
-              className="w-full mt-6"
-            >
+            <Button type="submit" variant="primary" size="lg" isLoading={isLoading} className="w-full mt-6">
               Create Account
             </Button>
           </form>
         </Card>
 
-        {/* Login Link */}
         <p className="text-center text-text-secondary mt-6">
           Already have an account?{' '}
-          <Link
-            to="/login"
-            className="text-accent-lime hover:text-accent-lime-dark transition-colors"
-          >
+          <Link to="/login" className="text-accent-lime hover:text-accent-lime-dark transition-colors">
             Sign in
           </Link>
         </p>

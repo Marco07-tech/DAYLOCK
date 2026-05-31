@@ -1,5 +1,3 @@
-'use client';
-
 import { useGymStore } from '../../../store/useGymStore';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { getDayName } from '../../../lib/utils';

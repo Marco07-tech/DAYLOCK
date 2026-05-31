@@ -13,7 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     persistSession: true,
-  }
+  },
 })
 
 export const signInWithGoogle = async () => {
@@ -33,6 +33,8 @@ export type Database = {
   profiles: {
     id: string
     name: string
+    goal: string | null
+    onboarding_completed: boolean
     created_at: string
   }
   tasks: {
@@ -48,6 +50,14 @@ export type Database = {
     scheduled_time: string
     created_at: string
   }
+  task_completions: {
+    id: string
+    user_id: string
+    task_id: string
+    date: string
+    completed: boolean
+    created_at: string
+  }
   gym_splits: {
     id: string
     user_id: string
@@ -59,7 +69,7 @@ export type Database = {
     user_id: string
     date: string
     split_name: string
-    exercises: any[]
+    exercises: unknown[]
     completed: boolean
     created_at: string
   }

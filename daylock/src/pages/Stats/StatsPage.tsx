@@ -1,8 +1,7 @@
-'use client';
-
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/Button';
@@ -13,10 +12,17 @@ import { HeatmapGrid } from './components/HeatmapGrid';
 export function StatsPage() {
   const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
+  const user = useAuthStore((state) => state.user);
   const tasks = useTaskStore((state) => state.tasks);
   const streaks = useTaskStore((state) => state.streaks);
+  const loadDailyLogs = useTaskStore((state) => state.loadDailyLogs);
 
-  // Empty state
+  useEffect(() => {
+    if (user?.id) {
+      void loadDailyLogs(user.id);
+    }
+  }, [user?.id, loadDailyLogs]);
+
   if (tasks.length === 0) {
     return (
       <div className="min-h-screen bg-bg-primary pb-20 page-enter flex flex-col items-center justify-center px-4">
@@ -25,33 +31,28 @@ export function StatsPage() {
         <p className="text-text-secondary text-sm text-center mb-6 max-w-xs">
           Start tracking habits to see your statistics and streaks here
         </p>
-        <Button
-          onClick={() => navigate('/dashboard')}
-          className="w-full"
-        >
+        <Button onClick={() => navigate('/dashboard')} className="w-full">
           Go to Dashboard →
         </Button>
       </div>
     );
   }
 
-  // Calculate week date range
   const today = new Date();
   const dayOfWeek = today.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() + mondayOffset + weekOffset * 7);
-  
+
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-  const formatDate = (date: Date) => {
+  const formatWeekDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const weekRange = `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
+  const weekRange = `${formatWeekDate(startOfWeek)} - ${formatWeekDate(endOfWeek)}`;
 
-  // Get best day (highest streak)
   const bestDay = tasks.reduce(
     (best, task) => {
       const streak = streaks[task.id] || 0;
@@ -65,7 +66,6 @@ export function StatsPage() {
       <div className="px-4 py-5">
         <h1 className="text-text-primary text-2xl font-semibold font-display mb-5">Statistics</h1>
 
-        {/* Week Selector */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => setWeekOffset(weekOffset - 1)}
@@ -88,10 +88,8 @@ export function StatsPage() {
           </button>
         </div>
 
-        {/* Weekly Chart */}
         <WeeklyChart weekOffset={weekOffset} />
 
-        {/* Your Best Day Card */}
         {bestDay && (
           <div className="bg-bg-card border border-bg-border rounded-2xl p-4 mb-3">
             <p className="text-text-secondary text-xs mb-2 font-medium">YOUR BEST DAY</p>
@@ -107,10 +105,7 @@ export function StatsPage() {
           </div>
         )}
 
-        {/* Streak List */}
         <StreakList />
-
-        {/* Heatmap Grid */}
         <HeatmapGrid />
       </div>
     </div>

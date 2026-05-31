@@ -2,10 +2,11 @@ import { Lock, Unlock } from 'lucide-react';
 import { useTaskStore } from '../../../store/useTaskStore';
 
 export function BlockerBanner() {
-  const tasks = useTaskStore((state) => state.tasks);
+  const getTodayTasks = useTaskStore((state) => state.getTodayTasks);
   const todayLog = useTaskStore((state) => state.todayLog);
+  const todayTasks = getTodayTasks();
 
-  if (tasks.length === 0) {
+  if (todayTasks.length === 0) {
     return (
       <div className="mb-3 bg-bg-card border border-bg-border rounded-2xl p-3.5 px-4">
         <p className="text-text-secondary text-sm">Add your first habit to get started</p>
@@ -13,7 +14,7 @@ export function BlockerBanner() {
     );
   }
 
-  const tasksRemaining = tasks.filter((t) => !todayLog[t.id]).length;
+  const tasksRemaining = todayTasks.filter((t) => !todayLog[t.id]).length;
   const isUnlocked = tasksRemaining === 0;
 
   if (isUnlocked) {

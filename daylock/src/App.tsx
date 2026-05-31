@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './store/useAuthStore'
-import { useTaskStore } from './store/useTaskStore'
-import { useGymStore } from './store/useGymStore'
 import { supabase } from './lib/supabase'
+import { getPostAuthPath } from './lib/profile'
+import { clearAuthStores, syncSessionToStores } from './lib/sessionSync'
 import { AppShell } from './components/layout/AppShell'
 import { LoginPage } from './pages/Auth/LoginPage'
 import { SignupPage } from './pages/Auth/SignupPage'
@@ -15,7 +15,6 @@ import { StatsPage } from './pages/Stats/StatsPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
 import './App.css'
 
-// Protected Route Component
 interface ProtectedRouteProps {
   children: React.ReactNode
 }
@@ -44,7 +43,7 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" replace />
   }
 
-  if (onboardingCompleted === false) {
+  if (onboardingCompleted !== true) {
     return <Navigate to="/onboarding" replace />
   }
 
@@ -71,7 +70,22 @@ function OnboardingRoute({ children }: ProtectedRouteProps) {
   return <>{children}</>
 }
 
-// Root redirect component
+function GuestRoute({ children }: ProtectedRouteProps) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isLoading = useAuthStore((state) => state.isLoading)
+  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+
+  if (isLoading) {
+    return <AuthLoadingScreen />
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to={getPostAuthPath(onboardingCompleted === true)} replace />
+  }
+
+  return <>{children}</>
+}
+
 function RootRedirect() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const isLoading = useAuthStore((state) => state.isLoading)
@@ -85,173 +99,101 @@ function RootRedirect() {
     return <Navigate to="/login" replace />
   }
 
-  if (onboardingCompleted === false) {
-    return <Navigate to="/onboarding" replace />
-  }
-
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
-  }
-
-  return <Navigate to="/login" replace />
+  return <Navigate to={getPostAuthPath(onboardingCompleted === true)} replace />
 }
 
 function AppRouter() {
   const navigate = useNavigate()
-  const setUser = useAuthStore((state) => state.setUser)
-  const setIsAuthenticated = useAuthStore((state) => state.setIsAuthenticated)
   const setIsLoading = useAuthStore((state) => state.setIsLoading)
-  const setOnboardingCompleted = useAuthStore((state) => state.setOnboardingCompleted)
-  const loadTasks = useTaskStore((state) => state.loadTasks)
-  const loadGymSplit = useGymStore((state) => state.loadGymSplit)
-  const loadTodayWorkout = useGymStore((state) => state.loadTodayWorkout)
 
   useEffect(() => {
-    // Handle OAuth callback - check for tokens in URL hash
     const hashParams = new URLSearchParams(window.location.hash.slice(1))
-    const accessToken = hashParams.get('access_token')
-
-    if (accessToken) {
-      // Clear the hash from URL
+    if (hashParams.get('access_token')) {
       window.history.replaceState(null, '', window.location.pathname)
     }
 
-    // Initialize auth on mount
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
 
         if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle()
-
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            name:
-              profile?.name ||
-              session.user.user_metadata?.full_name ||
-              session.user.email?.split('@')[0] ||
-              'User',
-          })
-          setIsAuthenticated(true)
-
-          const onboardingDone = profile?.onboarding_completed ?? false
-          setOnboardingCompleted(onboardingDone)
-
-          try {
-            await Promise.all([
-              loadTasks(session.user.id),
-              loadGymSplit(session.user.id),
-              loadTodayWorkout(session.user.id),
-            ])
-          } catch (dataErr) {
-            console.error('Data loading error:', dataErr)
-          }
+          const { onboardingCompleted } = await syncSessionToStores(session)
 
           const currentPath = window.location.pathname
-          if (currentPath === '/login' ||
-              currentPath === '/signup' ||
-              currentPath === '/') {
-            if (!onboardingDone) {
-              navigate('/onboarding', { replace: true })
-            } else {
-              navigate('/dashboard', { replace: true })
-            }
+          if (currentPath === '/login' || currentPath === '/signup' || currentPath === '/') {
+            navigate(getPostAuthPath(onboardingCompleted), { replace: true })
           }
         } else {
-          setIsAuthenticated(false)
-          setOnboardingCompleted(null)
+          clearAuthStores()
         }
       } catch (err) {
-        console.error('Session init error:', err)
-        setIsAuthenticated(false)
-        setOnboardingCompleted(null)
+        if (import.meta.env.DEV) {
+          console.error('Session init error:', err)
+        }
+        clearAuthStores()
       } finally {
-        // ALWAYS set loading false — no matter what happens
         setIsLoading(false)
       }
     }
 
     initializeAuth()
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event, session?.user?.email)
+      if (import.meta.env.DEV) {
+        console.debug('Auth event:', event)
+      }
 
-      // Don't handle SIGNED_IN here if AuthCallback is handling it
-      const isCallbackPage = window.location.pathname === '/auth/callback'
-      if (isCallbackPage) return
+      if (window.location.pathname === '/auth/callback') {
+        return
+      }
 
       if (event === 'SIGNED_IN' && session) {
         try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            name:
-              profile?.name ||
-              session.user.user_metadata?.full_name ||
-              session.user.email?.split('@')[0] ||
-              'User',
-          })
-          setIsAuthenticated(true)
-
-          await Promise.all([
-            loadTasks(session.user.id),
-            loadGymSplit(session.user.id),
-            loadTodayWorkout(session.user.id),
-          ])
-
-          const onboardingDone = profile?.onboarding_completed ?? false
-          setOnboardingCompleted(onboardingDone)
-
-          if (!onboardingDone) {
-            navigate('/onboarding', { replace: true })
-          } else {
-            navigate('/dashboard', { replace: true })
+          const { onboardingCompleted } = await syncSessionToStores(session)
+          const authPaths = ['/login', '/signup', '/']
+          if (authPaths.includes(window.location.pathname)) {
+            navigate(getPostAuthPath(onboardingCompleted), { replace: true })
           }
         } catch (err) {
-          console.error('Auth state change error:', err)
+          if (import.meta.env.DEV) {
+            console.error('Auth state change error:', err)
+          }
         }
       }
 
       if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setIsAuthenticated(false)
+        clearAuthStores()
         setIsLoading(false)
-        setOnboardingCompleted(null)
         navigate('/login', { replace: true })
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [
-    loadGymSplit,
-    loadTasks,
-    loadTodayWorkout,
-    navigate,
-    setIsAuthenticated,
-    setIsLoading,
-    setOnboardingCompleted,
-    setUser,
-  ])
+  }, [navigate, setIsLoading])
 
   return (
     <Routes>
       <Route path="/" element={<RootRedirect />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route
+        path="/login"
+        element={
+          <GuestRoute>
+            <LoginPage />
+          </GuestRoute>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <GuestRoute>
+            <SignupPage />
+          </GuestRoute>
+        }
+      />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
         path="/onboarding"
@@ -293,6 +235,7 @@ function AppRouter() {
           </ProtectedRoute>
         }
       />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

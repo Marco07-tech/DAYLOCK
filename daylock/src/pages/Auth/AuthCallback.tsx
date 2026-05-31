@@ -1,102 +1,69 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { getPostAuthPath } from '../../lib/profile'
+import { syncSessionToStores } from '../../lib/sessionSync'
 import { useAuthStore } from '../../store/useAuthStore'
-import { useTaskStore } from '../../store/useTaskStore'
-import { useGymStore } from '../../store/useGymStore'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+  const setIsLoading = useAuthStore((state) => state.setIsLoading)
 
   useEffect(() => {
-    const handleSession = async (session: any) => {
-      const user = session.user
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      const userName =
-        profile?.name ||
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email?.split('@')[0] || 'User'
-
-      useAuthStore.getState().setUser({
-        id: user.id,
-        email: user.email!,
-        name: userName,
-      })
-      useAuthStore.getState().setIsAuthenticated(true)
-      useAuthStore.getState().setIsLoading(false)
-
-      await useTaskStore.getState().loadTasks(user.id)
-      await useGymStore.getState().loadGymSplit(user.id)
-      await useGymStore.getState().loadTodayWorkout(user.id)
-
-      const onboardingDone = profile?.onboarding_completed ?? false
-      navigate(onboardingDone ? '/dashboard' : '/onboarding')
-    }
-
     const handleCallback = async () => {
       try {
-        console.log('AuthCallback: URL search params:', window.location.search)
-        console.log('AuthCallback: URL hash:', window.location.hash)
-
+        setIsLoading(true)
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
-        console.log('AuthCallback: code found:', !!code)
 
         if (code) {
-          console.log('AuthCallback: exchanging code for session...')
           const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-          console.log('AuthCallback: exchange result:', {
-            hasSession: !!data?.session,
-            error: error?.message,
-          })
 
           if (error || !data.session) {
-            console.error('Code exchange failed:', error)
-            navigate('/login')
+            if (import.meta.env.DEV) {
+              console.error('Code exchange failed:', error)
+            }
+            navigate('/login', { replace: true })
             return
           }
 
-          await handleSession(data.session)
+          const { onboardingCompleted } = await syncSessionToStores(data.session)
+          navigate(getPostAuthPath(onboardingCompleted), { replace: true })
           return
         }
 
-        // Check for hash-based token (implicit flow fallback)
         const hashParams = new URLSearchParams(window.location.hash.slice(1))
-        const accessToken = hashParams.get('access_token')
-        console.log('AuthCallback: access_token in hash:', !!accessToken)
-
-        if (accessToken) {
-          // Small delay to let Supabase process the hash
+        if (hashParams.get('access_token')) {
           await new Promise((resolve) => setTimeout(resolve, 500))
           const {
             data: { session },
             error,
           } = await supabase.auth.getSession()
-          console.log('AuthCallback: session from hash:', !!session, error?.message)
 
           if (session) {
-            await handleSession(session)
+            const { onboardingCompleted } = await syncSessionToStores(session)
+            navigate(getPostAuthPath(onboardingCompleted), { replace: true })
             return
+          }
+
+          if (import.meta.env.DEV && error) {
+            console.error('Session from hash failed:', error)
           }
         }
 
-        console.error('No session: null')
-        navigate('/login')
+        navigate('/login', { replace: true })
       } catch (err) {
-        console.error('Callback error:', err)
-          navigate('/login')
+        if (import.meta.env.DEV) {
+          console.error('Callback error:', err)
+        }
+        navigate('/login', { replace: true })
+      } finally {
+        setIsLoading(false)
       }
     }
 
     handleCallback()
-  }, [navigate])
+  }, [navigate, setIsLoading])
 
   return (
     <div
@@ -120,12 +87,7 @@ export default function AuthCallback() {
       >
         DayLock
       </div>
-      <div
-        style={{
-          display: 'flex',
-          gap: '6px',
-        }}
-      >
+      <div style={{ display: 'flex', gap: '6px' }}>
         {[0, 1, 2].map((i) => (
           <div
             key={i}

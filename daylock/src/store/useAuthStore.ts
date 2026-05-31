@@ -1,54 +1,8 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
+import { fetchProfile } from '../lib/profile'
+import { syncSessionToStores } from '../lib/sessionSync'
 import type { User } from '../types/index'
-
-type ProfileRecord = {
-  id: string
-  name: string
-  created_at?: string
-  onboarding_completed?: boolean
-}
-
-async function fetchProfile(userId: string): Promise<ProfileRecord | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (error) {
-    console.error('Failed to fetch profile:', error)
-    return null
-  }
-
-  return (data as ProfileRecord | null) ?? null
-}
-
-async function ensureProfile(userId: string, name: string): Promise<ProfileRecord | null> {
-  const profile = await fetchProfile(userId)
-  if (profile) {
-    return profile
-  }
-
-  const createdAt = new Date().toISOString()
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert({
-      id: userId,
-      name,
-      onboarding_completed: false,
-      created_at: createdAt,
-    })
-    .select('*')
-    .single()
-
-  if (error) {
-    console.error('Failed to create profile:', error)
-    return null
-  }
-
-  return data as ProfileRecord
-}
 
 interface AuthState {
   user: User | null
@@ -62,7 +16,6 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
-  initAuth: () => Promise<void>
   checkOnboarding: (userId: string) => Promise<boolean>
   updateUserName: (name: string) => void
   setOnboardingCompleted: (completed: boolean | null) => void
@@ -124,23 +77,13 @@ export const useAuthStore = create<AuthState>((set) => {
           return
         }
 
-        const profile = await ensureProfile(
-          data.user.id,
-          data.user.user_metadata?.name || email.split('@')[0]
-        )
-
-        const newUser: User = {
-          id: data.user.id,
-          email: data.user.email!,
-          name: profile?.name || data.user.user_metadata?.name || email.split('@')[0],
+        if (!data.session) {
+          set({ error: 'Unable to start session. Please try again.', isLoading: false })
+          return
         }
 
-        set({
-          user: newUser,
-          isAuthenticated: true,
-          onboardingCompleted: profile?.onboarding_completed ?? false,
-          isLoading: false,
-        })
+        await syncSessionToStores(data.session)
+        set({ isLoading: false })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Login failed'
         set({ error: message, isLoading: false })
@@ -163,26 +106,21 @@ export const useAuthStore = create<AuthState>((set) => {
           return
         }
 
-        // Create profile record
-        if (data.user?.id) {
-          const profile = await ensureProfile(data.user.id, name)
-
-          const newUser: User = {
-            id: data.user.id,
-            email,
-            name: profile?.name || name,
-          }
-
-          set({
-            user: newUser,
-            isAuthenticated: true,
-            onboardingCompleted: profile?.onboarding_completed ?? false,
-            isLoading: false,
-          })
-
+        if (!data.user?.id) {
+          set({ isLoading: false })
           return
         }
 
+        if (!data.session) {
+          set({
+            error: 'Account created. Check your email to confirm, then sign in.',
+            isLoading: false,
+            isAuthenticated: false,
+          })
+          return
+        }
+
+        await syncSessionToStores(data.session)
         set({ isLoading: false })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Signup failed'
@@ -197,42 +135,6 @@ export const useAuthStore = create<AuthState>((set) => {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Logout failed'
         set({ error: message })
-      }
-    },
-
-    initAuth: async () => {
-      try {
-        set({ isLoading: true })
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-
-        if (session?.user) {
-          const profile = await ensureProfile(
-            session.user.id,
-            session.user.user_metadata?.name || session.user.email!.split('@')[0]
-          )
-
-          const user: User = {
-            id: session.user.id,
-            email: session.user.email!,
-            name: profile?.name || session.user.user_metadata?.name || session.user.email!.split('@')[0],
-          }
-
-          set({
-            user,
-            isAuthenticated: true,
-            onboardingCompleted: profile?.onboarding_completed ?? false,
-            isLoading: false,
-          })
-        } else {
-          set({ isAuthenticated: false, onboardingCompleted: null, isLoading: false })
-        }
-      } catch (err) {
-        console.error('Auth initialization failed:', err)
-        set({ isAuthenticated: false, onboardingCompleted: null, isLoading: false })
-      } finally {
-        set({ isLoading: false })
       }
     },
 

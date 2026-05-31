@@ -1,22 +1,15 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/useAuthStore'
 import { signInWithGoogle } from '../../lib/supabase'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 
 export function LoginPage() {
-  const navigate = useNavigate()
-  const { login, isLoading, isAuthenticated, error, clearError } = useAuthStore()
+  const { login, isLoading, error, clearError } = useAuthStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
-    }
-  }, [isAuthenticated, navigate])
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value)
@@ -44,7 +37,9 @@ export function LoginPage() {
     try {
       await signInWithGoogle()
     } catch (googleError) {
-      console.error(googleError)
+      if (import.meta.env.DEV) {
+        console.error(googleError)
+      }
       setGoogleLoading(false)
     }
   }
@@ -52,15 +47,11 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-4 page-enter">
       <div className="max-w-sm w-full">
-        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="font-display font-bold text-4xl text-accent-lime mb-2">
-            DayLock
-          </h1>
+          <h1 className="font-display font-bold text-4xl text-accent-lime mb-2">DayLock</h1>
           <p className="text-text-muted text-base">Lock in your daily routine</p>
         </div>
 
-        {/* Form Card */}
         <Card className="p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <button
@@ -99,6 +90,7 @@ export function LoginPage() {
                 placeholder="Email"
                 value={email}
                 onChange={handleEmailChange}
+                autoComplete="email"
                 className="w-full bg-primary border border-bg-border rounded-xl px-4 py-3 text-white placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
               />
             </div>
@@ -109,33 +101,22 @@ export function LoginPage() {
                 placeholder="Password"
                 value={password}
                 onChange={handlePasswordChange}
+                autoComplete="current-password"
                 className="w-full bg-primary border border-bg-border rounded-xl px-4 py-3 text-white placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
               />
             </div>
 
-            {error && (
-              <p className="text-status-danger text-sm text-center">{error}</p>
-            )}
+            {error && <p className="text-status-danger text-sm text-center">{error}</p>}
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              isLoading={isLoading}
-              className="w-full mt-6"
-            >
+            <Button type="submit" variant="primary" size="lg" isLoading={isLoading} className="w-full mt-6">
               Sign In
             </Button>
           </form>
         </Card>
 
-        {/* Signup Link */}
         <p className="text-center text-text-secondary mt-6">
-          Don't have an account?{' '}
-          <Link
-            to="/signup"
-            className="text-accent-lime hover:text-accent-lime-dark transition-colors"
-          >
+          Don&apos;t have an account?{' '}
+          <Link to="/signup" className="text-accent-lime hover:text-accent-lime-dark transition-colors">
             Sign up
           </Link>
         </p>

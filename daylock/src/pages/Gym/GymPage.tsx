@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Dumbbell } from 'lucide-react'
@@ -24,6 +22,7 @@ export function GymPage() {
   const isWorkoutComplete = useGymStore((state) => state.isWorkoutComplete)
 
   const toggleTaskDone = useTaskStore((state) => state.toggleTaskDone)
+  const todayLog = useTaskStore((state) => state.todayLog)
   const tasks = useTaskStore((state) => state.tasks)
 
   // Initialize workout on mount if needed
@@ -38,7 +37,7 @@ export function GymPage() {
     await completeWorkout(user.id)
     // Find and toggle the gym task
     const gymTask = tasks.find((t) => t.type === 'gym')
-    if (gymTask) {
+    if (gymTask && !todayLog[gymTask.id]) {
       await toggleTaskDone(gymTask.id, user.id)
     }
     navigate('/dashboard')

@@ -2,14 +2,24 @@ import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import type { Task } from '../types/index'
 import { getDayName } from '../lib/utils'
+import { getTodayIsoDate } from '../lib/dates'
+
+export type DailyLogRow = {
+  date: string
+  completion_percent: number
+  tasks_done: number
+  tasks_total: number
+}
 
 interface TaskState {
   tasks: Task[]
   todayLog: { [taskId: string]: boolean }
   streaks: { [taskId: string]: number }
+  dailyLogs: DailyLogRow[]
   isLoading: boolean
   userId: string | null
   loadTasks: (userId: string) => Promise<void>
+  loadDailyLogs: (userId: string, fromDate?: string, toDate?: string) => Promise<void>
   addTask: (task: Omit<Task, 'id' | 'streak' | 'done'>, userId: string) => Promise<void>
   removeTask: (id: string, userId: string) => Promise<void>
   toggleTaskDone: (id: string, userId: string) => Promise<void>
@@ -18,40 +28,83 @@ interface TaskState {
   getBestStreak: () => number
   saveDailyLog: (userId: string) => Promise<void>
   resetTodayTasks: (userId: string) => Promise<void>
+  resetAllUserData: (userId: string) => Promise<void>
+}
+
+async function loadTodayCompletions(
+  userId: string,
+  today: string
+): Promise<Record<string, boolean>> {
+  const { data, error } = await supabase
+    .from('task_completions')
+    .select('task_id, completed')
+    .eq('user_id', userId)
+    .eq('date', today)
+
+  if (error) {
+    // Table may not exist until migration is applied — fail gracefully
+    if (import.meta.env.DEV && error.code !== 'PGRST205') {
+      console.error('Failed to load task completions:', error)
+    }
+    return {}
+  }
+
+  const log: Record<string, boolean> = {}
+  for (const row of data ?? []) {
+    if (row.completed) {
+      log[row.task_id] = true
+    }
+  }
+  return log
 }
 
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [] as Task[],
   todayLog: {} as { [taskId: string]: boolean },
   streaks: {} as { [taskId: string]: number },
+  dailyLogs: [] as DailyLogRow[],
   isLoading: false,
   userId: null,
 
   loadTasks: async (userId: string) => {
     try {
       set({ isLoading: true, userId })
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at')
+      const today = getTodayIsoDate()
 
-      if (error) {
-        console.error('Failed to load tasks:', error)
+      const [tasksResult, todayLog] = await Promise.all([
+        supabase.from('tasks').select('*').eq('user_id', userId).order('created_at'),
+        loadTodayCompletions(userId, today),
+      ])
+
+      if (tasksResult.error) {
+        if (import.meta.env.DEV) {
+          console.error('Failed to load tasks:', tasksResult.error)
+        }
         set({ isLoading: false })
         return
       }
 
+      const data = tasksResult.data
       if (data) {
-        // Map snake_case from DB to camelCase for frontend
-        const tasks: Task[] = data.map((t: any) => ({
+        const tasks: Task[] = data.map((t: {
+          id: string
+          type: Task['type']
+          name: string
+          icon: string
+          meta: string
+          streak: number
+          done: boolean
+          scheduled_days: string[]
+          scheduled_time: string
+          created_at: string
+        }) => ({
           id: t.id,
           type: t.type,
           name: t.name,
           icon: t.icon,
           meta: t.meta,
           streak: t.streak,
-          done: t.done,
+          done: false,
           scheduledDays: t.scheduled_days,
           scheduledTime: t.scheduled_time,
           createdAt: t.created_at,
@@ -62,11 +115,49 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           streaks[task.id] = task.streak
         })
 
-        set({ tasks, streaks, isLoading: false })
+        set({ tasks, streaks, todayLog, isLoading: false })
+      } else {
+        set({ isLoading: false })
       }
     } catch (err) {
-      console.error('Error loading tasks:', err)
+      if (import.meta.env.DEV) {
+        console.error('Error loading tasks:', err)
+      }
       set({ isLoading: false })
+    }
+  },
+
+  loadDailyLogs: async (userId: string, fromDate?: string, toDate?: string) => {
+    try {
+      const end = toDate ?? getTodayIsoDate()
+      const start =
+        fromDate ??
+        (() => {
+          const d = new Date()
+          d.setDate(d.getDate() - 29)
+          return d.toISOString().split('T')[0]
+        })()
+
+      const { data, error } = await supabase
+        .from('daily_logs')
+        .select('date, completion_percent, tasks_done, tasks_total')
+        .eq('user_id', userId)
+        .gte('date', start)
+        .lte('date', end)
+        .order('date')
+
+      if (error) {
+        if (import.meta.env.DEV) {
+          console.error('Failed to load daily logs:', error)
+        }
+        return
+      }
+
+      set({ dailyLogs: (data as DailyLogRow[]) ?? [] })
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error('Error loading daily logs:', err)
+      }
     }
   },
 
@@ -89,12 +180,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         .single()
 
       if (error) {
-        console.error('Failed to add task:', error)
+        if (import.meta.env.DEV) {
+          console.error('Failed to add task:', error)
+        }
         return
       }
 
       if (data) {
-        // Optimistically update local state
         const newTask: Task = {
           id: data.id,
           type: data.type,
@@ -102,7 +194,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           icon: data.icon,
           meta: data.meta,
           streak: data.streak,
-          done: data.done,
+          done: false,
           scheduledDays: data.scheduled_days,
           scheduledTime: data.scheduled_time,
           createdAt: data.created_at,
@@ -117,7 +209,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         }))
       }
     } catch (err) {
-      console.error('Error adding task:', err)
+      if (import.meta.env.DEV) {
+        console.error('Error adding task:', err)
+      }
     }
   },
 
@@ -127,12 +221,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const task = state.tasks.find((t) => t.id === id)
       if (!task) return
 
-      const isDone = state.todayLog[id] || false
-      const newDone = !isDone
+      const wasDoneToday = state.todayLog[id] || false
+      const newDone = !wasDoneToday
+      const today = getTodayIsoDate()
       const currentStreak = state.streaks[id] || 0
-      const newStreak = newDone ? currentStreak + 1 : Math.max(0, currentStreak - 1)
+      const newStreak = newDone && !wasDoneToday ? currentStreak + 1 : currentStreak
 
-      // Optimistically update local state
       set((s) => ({
         todayLog: {
           ...s.todayLog,
@@ -142,35 +236,45 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           ...s.streaks,
           [id]: newStreak,
         },
-        tasks: s.tasks.map((t) =>
-          t.id === id ? { ...t, streak: newStreak, done: newDone } : t
-        ),
+        tasks: s.tasks.map((t) => (t.id === id ? { ...t, streak: newStreak } : t)),
       }))
 
-      // Sync to database
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          done: newDone,
-          streak: newStreak,
-        })
-        .eq('id', id)
-        .eq('user_id', userId)
+      const { error: completionError } = await supabase.from('task_completions').upsert(
+        {
+          user_id: userId,
+          task_id: id,
+          date: today,
+          completed: newDone,
+        },
+        { onConflict: 'user_id,task_id,date' }
+      )
 
-      if (error) {
-        console.error('Failed to toggle task:', error)
+      if (completionError && import.meta.env.DEV) {
+        console.error('Failed to save task completion:', completionError)
       }
 
-      // Save daily log after toggle
+      if (newDone && !wasDoneToday) {
+        const { error: streakError } = await supabase
+          .from('tasks')
+          .update({ streak: newStreak })
+          .eq('id', id)
+          .eq('user_id', userId)
+
+        if (streakError && import.meta.env.DEV) {
+          console.error('Failed to update streak:', streakError)
+        }
+      }
+
       await get().saveDailyLog(userId)
     } catch (err) {
-      console.error('Error toggling task:', err)
+      if (import.meta.env.DEV) {
+        console.error('Error toggling task:', err)
+      }
     }
   },
 
   removeTask: async (id: string, userId: string) => {
     try {
-      // Optimistically remove from local state
       set((state) => {
         const newStreaks = { ...state.streaks }
         delete newStreaks[id]
@@ -183,18 +287,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         }
       })
 
-      // Sync to database
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId)
+      const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', userId)
 
-      if (error) {
+      if (error && import.meta.env.DEV) {
         console.error('Failed to remove task:', error)
       }
     } catch (err) {
-      console.error('Error removing task:', err)
+      if (import.meta.env.DEV) {
+        console.error('Error removing task:', err)
+      }
     }
   },
 
@@ -224,7 +325,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const todayTasks = get().getTodayTasks()
       const completed = todayTasks.filter((t) => state.todayLog[t.id]).length
       const percent = todayTasks.length > 0 ? Math.round((completed / todayTasks.length) * 100) : 0
-      const today = new Date().toISOString().split('T')[0]
+      const today = getTodayIsoDate()
 
       await supabase.from('daily_logs').upsert(
         {
@@ -237,28 +338,37 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         { onConflict: 'user_id,date' }
       )
     } catch (err) {
-      console.error('Error saving daily log:', err)
+      if (import.meta.env.DEV) {
+        console.error('Error saving daily log:', err)
+      }
     }
   },
 
-  resetTodayTasks: async (userId: string) => {
+  resetTodayTasks: async (_userId: string) => {
+    set({ todayLog: {} })
+  },
+
+  resetAllUserData: async (userId: string) => {
     try {
-      // Reset local state
+      await Promise.all([
+        supabase.from('task_completions').delete().eq('user_id', userId),
+        supabase.from('daily_logs').delete().eq('user_id', userId),
+        supabase.from('tasks').delete().eq('user_id', userId),
+        supabase.from('workout_logs').delete().eq('user_id', userId),
+        supabase.from('gym_splits').delete().eq('user_id', userId),
+      ])
+
       set({
+        tasks: [],
         todayLog: {},
+        streaks: {},
+        dailyLogs: [],
       })
-
-      // Reset in database
-      const { error } = await supabase
-        .from('tasks')
-        .update({ done: false })
-        .eq('user_id', userId)
-
-      if (error) {
-        console.error('Failed to reset today tasks:', error)
-      }
     } catch (err) {
-      console.error('Error resetting today tasks:', err)
+      if (import.meta.env.DEV) {
+        console.error('Error resetting user data:', err)
+      }
+      throw err
     }
   },
 }))

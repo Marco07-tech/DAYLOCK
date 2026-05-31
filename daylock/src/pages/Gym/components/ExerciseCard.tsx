@@ -1,5 +1,3 @@
-'use client';
-
 import { Plus, Check } from 'lucide-react';
 import type { Exercise } from '../../../types';
 import { useGymStore } from '../../../store/useGymStore';

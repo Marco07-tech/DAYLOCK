@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Plus, Moon } from 'lucide-react';
 import { useGymStore } from '../../../store/useGymStore';
