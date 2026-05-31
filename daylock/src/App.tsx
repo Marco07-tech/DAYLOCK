@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from './store/useAuthStore'
 import { useTaskStore } from './store/useTaskStore'
 import { useGymStore } from './store/useGymStore'
@@ -19,9 +19,25 @@ interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
+function AuthLoadingScreen() {
+  return (
+    <div className="w-full h-screen bg-[#0B0F0A] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-12 w-12 rounded-full border-4 border-[#1F2A19] border-t-[#A3E635] animate-spin" />
+        <p className="text-sm text-[#94A37A]">Loading session...</p>
+      </div>
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isLoading = useAuthStore((state) => state.isLoading)
   const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+
+  if (isLoading) {
+    return <AuthLoadingScreen />
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -36,7 +52,12 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
 
 function OnboardingRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isLoading = useAuthStore((state) => state.isLoading)
   const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+
+  if (isLoading) {
+    return <AuthLoadingScreen />
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -52,7 +73,12 @@ function OnboardingRoute({ children }: ProtectedRouteProps) {
 // Root redirect component
 function RootRedirect() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const isLoading = useAuthStore((state) => state.isLoading)
   const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+
+  if (isLoading) {
+    return <AuthLoadingScreen />
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -71,28 +97,140 @@ function RootRedirect() {
 
 function AppRouter() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
-  const authIsLoading = useAuthStore((state) => state.isLoading)
+  const setUser = useAuthStore((state) => state.setUser)
+  const setIsAuthenticated = useAuthStore((state) => state.setIsAuthenticated)
+  const setIsLoading = useAuthStore((state) => state.setIsLoading)
+  const setOnboardingCompleted = useAuthStore((state) => state.setOnboardingCompleted)
+  const loadTasks = useTaskStore((state) => state.loadTasks)
+  const loadGymSplit = useGymStore((state) => state.loadGymSplit)
+  const loadTodayWorkout = useGymStore((state) => state.loadTodayWorkout)
 
   useEffect(() => {
-    if (authIsLoading || !isAuthenticated || onboardingCompleted === null) {
-      return
+    // Handle OAuth callback - check for tokens in URL hash
+    const hashParams = new URLSearchParams(window.location.hash.slice(1))
+    const accessToken = hashParams.get('access_token')
+
+    if (accessToken) {
+      // Clear the hash from URL
+      window.history.replaceState(null, '', window.location.pathname)
     }
 
-    const publicRoutes = ['/', '/login', '/signup', '/onboarding']
-    const shouldGoToOnboarding = onboardingCompleted === false
+    // Initialize auth on mount
+    const initializeAuth = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
-    if (shouldGoToOnboarding && location.pathname !== '/onboarding') {
-      navigate('/onboarding', { replace: true })
-      return
+      if (session?.user) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name:
+              profile?.name ||
+              session.user.user_metadata?.full_name ||
+              session.user.email?.split('@')[0] ||
+              'User',
+          })
+          setIsAuthenticated(true)
+
+          await Promise.all([
+            loadTasks(session.user.id),
+            loadGymSplit(session.user.id),
+            loadTodayWorkout(session.user.id),
+          ])
+
+          const onboardingDone = profile?.onboarding_completed ?? false
+          setOnboardingCompleted(onboardingDone)
+
+          if (!onboardingDone) {
+            navigate('/onboarding', { replace: true })
+          } else {
+            const currentPath = window.location.pathname
+            if (currentPath === '/login' || currentPath === '/signup' || currentPath === '/') {
+              navigate('/dashboard', { replace: true })
+            }
+          }
+        } catch (err) {
+          console.error('Session init error:', err)
+        }
+      }
+
+      setIsLoading(false)
     }
 
-    if (!shouldGoToOnboarding && publicRoutes.includes(location.pathname)) {
-      navigate('/dashboard', { replace: true })
-    }
-  }, [authIsLoading, isAuthenticated, onboardingCompleted, location.pathname, navigate])
+    initializeAuth()
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event, session?.user?.email)
+
+      if (event === 'SIGNED_IN' && session) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name:
+              profile?.name ||
+              session.user.user_metadata?.full_name ||
+              session.user.email?.split('@')[0] ||
+              'User',
+          })
+          setIsAuthenticated(true)
+
+          await Promise.all([
+            loadTasks(session.user.id),
+            loadGymSplit(session.user.id),
+            loadTodayWorkout(session.user.id),
+          ])
+
+          const onboardingDone = profile?.onboarding_completed ?? false
+          setOnboardingCompleted(onboardingDone)
+
+          if (!onboardingDone) {
+            navigate('/onboarding', { replace: true })
+          } else {
+            navigate('/dashboard', { replace: true })
+          }
+        } catch (err) {
+          console.error('Auth state change error:', err)
+        }
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setIsAuthenticated(false)
+        setIsLoading(false)
+        setOnboardingCompleted(null)
+        navigate('/login', { replace: true })
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [
+    loadGymSplit,
+    loadTasks,
+    loadTodayWorkout,
+    navigate,
+    setIsAuthenticated,
+    setIsLoading,
+    setOnboardingCompleted,
+    setUser,
+  ])
 
   return (
     <Routes>
@@ -144,141 +282,6 @@ function AppRouter() {
 }
 
 export function App() {
-  const [appLoading, setAppLoading] = useState(true)
-  const initAuth = useAuthStore((state) => state.initAuth)
-  const setUser = useAuthStore((state) => state.setUser)
-  const setIsAuthenticated = useAuthStore((state) => state.setIsAuthenticated)
-  const setOnboardingCompleted = useAuthStore((state) => state.setOnboardingCompleted)
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const user = useAuthStore((state) => state.user)
-  const authIsLoading = useAuthStore((state) => state.isLoading)
-  const loadTasks = useTaskStore((state) => state.loadTasks)
-  const loadGymSplit = useGymStore((state) => state.loadGymSplit)
-  const loadTodayWorkout = useGymStore((state) => state.loadTodayWorkout)
-
-  useEffect(() => {
-    // Initialize auth on mount
-    const initializeAuth = async () => {
-      await initAuth()
-    }
-    initializeAuth()
-  }, [initAuth])
-
-  useEffect(() => {
-    // Listen for auth state changes including OAuth callbacks
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-
-          const userName =
-            profile?.name ||
-            session.user.user_metadata?.full_name ||
-            session.user.user_metadata?.name ||
-            session.user.email?.split('@')[0] ||
-            'User'
-
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            name: userName,
-          })
-          setIsAuthenticated(true)
-
-          await Promise.all([loadTasks(session.user.id), loadGymSplit(session.user.id)])
-          await loadTodayWorkout(session.user.id)
-
-          const onboardingDone = profile?.onboarding_completed ?? false
-          setOnboardingCompleted(onboardingDone)
-
-          if (!onboardingDone) {
-            if (window.location.pathname !== '/onboarding') {
-              window.location.assign('/onboarding')
-            }
-          } else {
-            const currentPath = window.location.pathname
-            if (currentPath === '/login' || currentPath === '/signup') {
-              window.location.assign('/dashboard')
-            }
-          }
-        } catch (err) {
-          console.error('Auth state change error:', err)
-        }
-      }
-
-      if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setIsAuthenticated(false)
-        setOnboardingCompleted(null)
-        if (window.location.pathname !== '/login') {
-          window.location.assign('/login')
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [loadGymSplit, loadTasks, loadTodayWorkout, setIsAuthenticated, setOnboardingCompleted, setUser])
-
-  // Load user data after auth is initialized
-  useEffect(() => {
-    if (!authIsLoading && isAuthenticated && user) {
-      const loadUserData = async () => {
-        try {
-          await loadTasks(user.id)
-          await loadGymSplit(user.id)
-          await loadTodayWorkout(user.id)
-        } catch (err) {
-          console.error('Failed to load user data:', err)
-        }
-      }
-      loadUserData()
-    }
-  }, [authIsLoading, isAuthenticated, user])
-
-  // Set app loading to false once auth has been checked
-  useEffect(() => {
-    if (!authIsLoading) {
-      setAppLoading(false)
-    }
-  }, [authIsLoading])
-
-  if (appLoading) {
-    return (
-      <div className="w-full h-screen bg-bg-primary flex flex-col items-center justify-center gap-4">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold font-display text-accent-lime mb-2">DayLock</h1>
-          <p className="text-text-secondary text-sm">Lock in your daily routine</p>
-        </div>
-        <div className="flex gap-1.5 mt-4">
-          <div
-            className="w-2 h-2 rounded-full bg-accent-lime opacity-60"
-            style={{
-              animation: 'pulse 1.5s infinite 0s',
-            }}
-          />
-          <div
-            className="w-2 h-2 rounded-full bg-accent-lime opacity-60"
-            style={{
-              animation: 'pulse 1.5s infinite 0.3s',
-            }}
-          />
-          <div
-            className="w-2 h-2 rounded-full bg-accent-lime opacity-60"
-            style={{
-              animation: 'pulse 1.5s infinite 0.6s',
-            }}
-          />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <Router>
       <AppRouter />

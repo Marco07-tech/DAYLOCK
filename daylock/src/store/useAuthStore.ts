@@ -58,6 +58,7 @@ interface AuthState {
   onboardingCompleted: boolean | null
   setUser: (user: User | null) => void
   setIsAuthenticated: (isAuthenticated: boolean) => void
+  setIsLoading: (isLoading: boolean) => void
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
@@ -69,17 +70,10 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => {
-  // Set up auth state change listener
-  supabase.auth.onAuthStateChange(async (event) => {
-    if (event === 'SIGNED_OUT') {
-      set({ user: null, isAuthenticated: false })
-    }
-  })
-
   return {
     user: null,
     isAuthenticated: false,
-    isLoading: false,
+    isLoading: true,
     error: null,
     onboardingCompleted: null,
 
@@ -89,6 +83,10 @@ export const useAuthStore = create<AuthState>((set) => {
 
     setIsAuthenticated: (isAuthenticated: boolean) => {
       set({ isAuthenticated })
+    },
+
+    setIsLoading: (isLoading: boolean) => {
+      set({ isLoading })
     },
 
     checkOnboarding: async (userId: string) => {
@@ -195,7 +193,7 @@ export const useAuthStore = create<AuthState>((set) => {
     logout: async () => {
       try {
         await supabase.auth.signOut()
-        set({ user: null, isAuthenticated: false, onboardingCompleted: null })
+        set({ user: null, isAuthenticated: false, onboardingCompleted: null, isLoading: false })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Logout failed'
         set({ error: message })
