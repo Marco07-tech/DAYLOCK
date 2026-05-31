@@ -9,48 +9,70 @@ export default function AuthCallback() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    const handleSession = async (session: any) => {
+      const user = session.user
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      const userName =
+        profile?.name ||
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split('@')[0] || 'User'
+
+      useAuthStore.getState().setUser({
+        id: user.id,
+        email: user.email!,
+        name: userName,
+      })
+      useAuthStore.getState().setIsAuthenticated(true)
+      useAuthStore.getState().setIsLoading(false)
+
+      await useTaskStore.getState().loadTasks(user.id)
+      await useGymStore.getState().loadGymSplit(user.id)
+      await useGymStore.getState().loadTodayWorkout(user.id)
+
+      const onboardingDone = profile?.onboarding_completed ?? false
+      navigate(onboardingDone ? '/dashboard' : '/onboarding')
+    }
+
     const handleCallback = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // PKCE flow: exchange code from URL for session
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get('code')
+
+        if (code) {
+          // Exchange the code for a session
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+          if (error || !data.session) {
+            console.error('Code exchange failed:', error)
+            navigate('/login')
+            return
+          }
+
+          await handleSession(data.session)
+          return
+        }
+
+        // Fallback: try getSession
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
 
         if (error || !session) {
-          console.error('No session after callback:', error)
+          console.error('No session:', error)
           navigate('/login')
           return
         }
 
-        const user = session.user
-
-        let { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-
-        const userName =
-          profile?.name ||
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          user.email?.split('@')[0] || 'User'
-
-        useAuthStore.getState().setUser({
-          id: user.id,
-          email: user.email!,
-          name: userName,
-        })
-        useAuthStore.getState().setIsAuthenticated(true)
-        useAuthStore.getState().setIsLoading(false)
-
-        await useTaskStore.getState().loadTasks(user.id)
-        await useGymStore.getState().loadGymSplit(user.id)
-        await useGymStore.getState().loadTodayWorkout(user.id)
-
-        const onboardingDone = profile?.onboarding_completed ?? false
-        if (!onboardingDone) {
-          navigate('/onboarding')
-        } else {
-          navigate('/dashboard')
-        }
+        await handleSession(session)
       } catch (err) {
         console.error('Callback error:', err)
         navigate('/login')
