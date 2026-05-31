@@ -4,8 +4,6 @@ import { ArrowLeft, Moon, Sunrise } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { Button } from '../../components/ui/Button'
 import { useAuthStore } from '../../store/useAuthStore'
-import { useTaskStore } from '../../store/useTaskStore'
-import type { Task } from '../../types'
 
 type Step = 1 | 2 | 3
 type Goal = 'cut' | 'bulk' | 'maintain' | null
@@ -88,7 +86,6 @@ export function OnboardingPage() {
   const user = useAuthStore((state) => state.user)
   const setUser = useAuthStore((state) => state.setUser)
   const setOnboardingCompleted = useAuthStore((state) => state.setOnboardingCompleted)
-  const addTask = useTaskStore((state) => state.addTask)
 
   const [step, setStep] = useState<Step>(1)
   const [stepClass, setStepClass] = useState('step-enter')
@@ -96,6 +93,7 @@ export function OnboardingPage() {
   const [goal, setGoal] = useState<Goal>(null)
   const [wakeTime, setWakeTime] = useState('')
   const [sleepTime, setSleepTime] = useState('')
+  const [isFinishing, setIsFinishing] = useState(false)
 
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -138,8 +136,16 @@ export function OnboardingPage() {
   }
 
   const finishOnboarding = async () => {
+    if (isFinishing) return
+    setIsFinishing(true)
+
+    // Set a timeout fallback — navigate no matter what after 3 seconds
+    const fallbackTimer = setTimeout(() => {
+      navigate('/dashboard', { replace: true })
+    }, 3000)
+
     try {
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({
           name,
@@ -147,33 +153,39 @@ export function OnboardingPage() {
         })
         .eq('id', user.id)
 
+      if (error) console.error('Profile update error:', error)
+
       setUser({ ...user, name })
       setOnboardingCompleted(true)
 
       if (wakeTime && sleepTime) {
         try {
-          await addTask(
-            {
-              type: 'sleep',
-              name: `Sleep by ${sleepTime}`,
-              icon: 'moon',
-              meta: `Wake: ${wakeTime} · Bed: ${sleepTime}`,
-              scheduledDays: ALL_DAYS,
-              scheduledTime: sleepTime,
-            } as Omit<Task, 'id' | 'streak' | 'done'>,
-            user.id
-          )
+          // Use supabase directly instead of store action
+          await supabase.from('tasks').insert({
+            user_id: user.id,
+            type: 'sleep',
+            name: `Sleep by ${sleepTime}`,
+            icon: 'moon',
+            meta: `Wake: ${wakeTime} · Bed: ${sleepTime}`,
+            scheduled_days: ALL_DAYS,
+            scheduled_time: sleepTime,
+            streak: 0,
+            done: false,
+          })
         } catch (taskErr) {
-          console.error('Sleep task creation failed:', taskErr)
-          // Continue even if task creation fails
+          console.error('Sleep task error:', taskErr)
         }
       }
 
+      clearTimeout(fallbackTimer)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       console.error('Onboarding error:', err)
+      clearTimeout(fallbackTimer)
       // Navigate anyway
       navigate('/dashboard', { replace: true })
+    } finally {
+      setIsFinishing(false)
     }
   }
 
@@ -325,8 +337,9 @@ export function OnboardingPage() {
 
             <button
               type="button"
-              onClick={() => finishOnboarding()}
-              className="mt-5 mb-3 text-center text-[13px] text-[#4A4A5A] transition-colors hover:text-white"
+              onClick={() => !isFinishing && finishOnboarding()}
+              disabled={isFinishing}
+              className="mt-5 mb-3 text-center text-[13px] text-[#4A4A5A] transition-colors hover:text-white disabled:opacity-50"
             >
               Skip for now
             </button>
@@ -335,8 +348,10 @@ export function OnboardingPage() {
               onClick={() => finishOnboarding()}
               className="w-full"
               size="lg"
+              isLoading={isFinishing}
+              disabled={isFinishing}
             >
-              Finish Setup ✓
+              {isFinishing ? 'Setting up...' : 'Finish Setup ✓'}
             </Button>
           </div>
         )}
