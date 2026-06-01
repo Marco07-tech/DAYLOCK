@@ -310,6 +310,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         return false
       }
 
+      await get().saveDailyLog(userId)
       return true
     } catch (err) {
       if (import.meta.env.DEV) {

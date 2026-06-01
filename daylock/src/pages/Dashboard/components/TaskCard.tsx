@@ -115,30 +115,36 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
         </button>
 
         {menuOpen && (
-          <div className="absolute right-2 top-11 z-20 w-40 overflow-hidden rounded-2xl border border-bg-border bg-[#11131A] shadow-2xl">
-            <button
-              type="button"
-              onClick={() => {
-                setMenuOpen(false)
-                onToast('Edit Habit is coming soon', 'error')
-              }}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white transition-colors hover:bg-bg-card"
-            >
-              <Pencil size={14} className="text-text-secondary" />
-              Edit Habit
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMenuOpen(false)
-                setShowDeleteConfirm(true)
-              }}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-status-danger transition-colors hover:bg-[rgba(239,68,68,0.1)]"
-            >
-              <Trash2 size={14} className="text-status-danger" />
-              Delete Habit
-            </button>
-          </div>
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setMenuOpen(false)}
+            />
+            <div className="absolute right-2 top-11 z-20 w-40 overflow-hidden rounded-2xl border border-bg-border bg-[#11131A] shadow-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onToast('Edit Habit is coming soon', 'error')
+                }}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white transition-colors hover:bg-bg-card"
+              >
+                <Pencil size={14} className="text-text-secondary" />
+                Edit Habit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setShowDeleteConfirm(true)
+                }}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-status-danger transition-colors hover:bg-[rgba(239,68,68,0.1)]"
+              >
+                <Trash2 size={14} className="text-status-danger" />
+                Delete Habit
+              </button>
+            </div>
+          </>
         )}
       </div>
 
@@ -147,7 +153,7 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
           <div className="w-full max-w-sm rounded-3xl border border-bg-border bg-bg-secondary p-5 shadow-2xl">
             <h3 className="font-display text-xl text-white">Delete Habit?</h3>
             <p className="mt-2 text-sm text-text-secondary">
-              This will permanently remove this habit from your routine.
+              This will permanently remove this habit and its completion history.
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
