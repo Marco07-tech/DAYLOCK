@@ -29,7 +29,7 @@ export function StatsPage() {
         <BarChart3 size={48} className="text-text-muted mb-4 opacity-50" />
         <h2 className="text-text-primary font-semibold text-lg font-display mb-2">No data yet</h2>
         <p className="text-text-secondary text-sm text-center mb-6 max-w-xs">
-          Start tracking habits to see your statistics and streaks here
+          Track habits daily to unlock your stats, streaks, and activity heatmap.
         </p>
         <Button onClick={() => navigate('/dashboard')} className="w-full">
           Go to Dashboard →

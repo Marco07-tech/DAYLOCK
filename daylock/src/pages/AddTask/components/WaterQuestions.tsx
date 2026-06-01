@@ -2,6 +2,8 @@ import { cn } from '../../../lib/utils';
 
 const TARGETS = ['2L', '2.5L', '3L', '4L'];
 const TARGET_PERCENT = { '2L': 50, '2.5L': 62.5, '3L': 75, '4L': 100 };
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 interface WaterQuestionsProps {
   formData: Record<string, any>;
@@ -10,7 +12,15 @@ interface WaterQuestionsProps {
 
 export function WaterQuestions({ formData, setFormData }: WaterQuestionsProps) {
   const selectedTarget = formData.target || '2L';
+  const selectedDays = formData.days || [];
   const fillPercent = TARGET_PERCENT[selectedTarget as keyof typeof TARGET_PERCENT] || 50;
+
+  const toggleDay = (day: string) => {
+    const newDays = selectedDays.includes(day)
+      ? selectedDays.filter((d: string) => d !== day)
+      : [...selectedDays, day];
+    setFormData({ ...formData, days: newDays });
+  };
 
   return (
     <div className="space-y-6">
@@ -52,6 +62,29 @@ export function WaterQuestions({ formData, setFormData }: WaterQuestionsProps) {
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-xs font-bold text-accent-lime">{selectedTarget}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Question 2: Repeat on */}
+      <div>
+        <label className="block text-sm font-medium text-text-primary mb-3">
+          Repeat on
+        </label>
+        <div className="flex gap-2 justify-between">
+          {DAYS.map((day, idx) => (
+            <button
+              key={day}
+              onClick={() => toggleDay(day)}
+              className={cn(
+                'w-8 h-8 rounded-full text-xs font-medium transition-all duration-150 flex items-center justify-center',
+                selectedDays.includes(day)
+                  ? 'bg-accent-lime border border-accent-lime text-black'
+                  : 'bg-bg-card border border-bg-border text-text-primary'
+              )}
+            >
+              {DAY_INITIALS[idx]}
+            </button>
+          ))}
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { Button } from '../../components/ui/Button'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useTaskStore } from '../../store/useTaskStore'
+import { formatTo24Hour, formatTo12Hour } from '../../lib/utils'
 
 type Step = 1 | 2 | 3
 type Goal = 'cut' | 'bulk' | 'maintain' | null
@@ -313,10 +314,10 @@ export function OnboardingPage() {
                   <p className="text-[12px] text-[#8B8B9E]">Wake up time</p>
                 </div>
                 <input
-                  value={wakeTime}
-                  onChange={(event) => setWakeTime(event.target.value)}
-                  placeholder="6:30 AM"
-                  className="mt-4 w-full border-b-2 border-[#2A2A35] bg-transparent pb-2 text-center font-display text-[28px] text-white outline-none transition-colors placeholder:text-[#4A4A5A] focus:border-[#A8FF3E]"
+                  type="time"
+                  value={formatTo24Hour(wakeTime)}
+                  onChange={(event) => setWakeTime(formatTo12Hour(event.target.value))}
+                  className="mt-4 w-full border-b-2 border-[#2A2A35] bg-transparent pb-2 text-center font-display text-[28px] text-white outline-none transition-colors focus:border-[#A8FF3E]"
                 />
               </div>
 
@@ -326,10 +327,10 @@ export function OnboardingPage() {
                   <p className="text-[12px] text-[#8B8B9E]">Bedtime</p>
                 </div>
                 <input
-                  value={sleepTime}
-                  onChange={(event) => setSleepTime(event.target.value)}
-                  placeholder="11:00 PM"
-                  className="mt-4 w-full border-b-2 border-[#2A2A35] bg-transparent pb-2 text-center font-display text-[28px] text-white outline-none transition-colors placeholder:text-[#4A4A5A] focus:border-[#A8FF3E]"
+                  type="time"
+                  value={formatTo24Hour(sleepTime)}
+                  onChange={(event) => setSleepTime(formatTo12Hour(event.target.value))}
+                  className="mt-4 w-full border-b-2 border-[#2A2A35] bg-transparent pb-2 text-center font-display text-[28px] text-white outline-none transition-colors focus:border-[#A8FF3E]"
                 />
               </div>
             </div>

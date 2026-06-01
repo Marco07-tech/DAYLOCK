@@ -1,4 +1,4 @@
-import { cn } from '../../../lib/utils';
+import { cn, formatTo24Hour, formatTo12Hour } from '../../../lib/utils';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -40,11 +40,10 @@ export function CustomQuestions({ formData, setFormData }: CustomQuestionsProps)
           Reminder time (optional)
         </label>
         <input
-          type="text"
-          placeholder="e.g. 8:00 PM"
-          value={formData.time || ''}
-          onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-          className="w-full bg-bg-card border border-bg-border rounded-lg px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
+          type="time"
+          value={formatTo24Hour(formData.time || '')}
+          onChange={(e) => setFormData({ ...formData, time: formatTo12Hour(e.target.value) })}
+          className="w-full bg-bg-card border border-bg-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent-lime transition-colors"
         />
       </div>
 

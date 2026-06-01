@@ -22,6 +22,7 @@ interface TaskState {
   loadTasks: (userId: string) => Promise<void>
   loadDailyLogs: (userId: string, fromDate?: string, toDate?: string) => Promise<void>
   addTask: (task: Omit<Task, 'id' | 'streak' | 'done'>, userId: string) => Promise<void>
+  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'streak'>>, userId: string) => Promise<boolean>
   removeTask: (id: string, userId: string) => Promise<boolean>
   toggleTaskDone: (id: string, userId: string) => Promise<void>
   getTodayTasks: () => Task[]
@@ -281,6 +282,60 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (import.meta.env.DEV) {
         console.error('Error toggling task:', err)
       }
+    }
+  },
+
+  updateTask: async (id: string, updates: Partial<Omit<Task, 'id' | 'streak'>>, userId: string) => {
+    try {
+      const state = get()
+      const task = state.tasks.find((t) => t.id === id)
+      if (!task) return false
+
+      // Optimistically update local state
+      set((s) => ({
+        tasks: s.tasks.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                ...updates,
+              }
+            : t
+        ),
+      }))
+
+      // Build update object for Supabase
+      const dbUpdate: Record<string, any> = {}
+      if (updates.name) dbUpdate.name = updates.name
+      if (updates.scheduledDays) dbUpdate.scheduled_days = updates.scheduledDays
+      if (updates.scheduledTime !== undefined) dbUpdate.scheduled_time = updates.scheduledTime
+      if (updates.meta !== undefined) {
+        dbUpdate.meta = typeof updates.meta === 'object' ? JSON.stringify(updates.meta) : updates.meta
+      }
+
+      const { error } = await supabase
+        .from('tasks')
+        .update(dbUpdate)
+        .eq('id', id)
+        .eq('user_id', userId)
+
+      if (error) {
+        if (import.meta.env.DEV) {
+          console.error('Failed to update task:', error)
+        }
+        return false
+      }
+
+      // Recompute daily logs if days changed
+      if (updates.scheduledDays) {
+        await get().saveDailyLog(userId)
+      }
+
+      return true
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error('Error updating task:', err)
+      }
+      return false
     }
   },
 

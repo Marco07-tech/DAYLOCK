@@ -30,7 +30,8 @@ export function WorkoutLogger() {
           <h3 className="text-text-primary text-xl font-semibold mb-2 font-display">
             Rest Day
           </h3>
-          <p className="text-text-secondary text-sm">Recovery is part of the grind</p>
+          <p className="text-text-secondary text-sm">Recovery is essential for progress.</p>
+          <p className="text-text-muted text-xs mt-2">Come back stronger tomorrow! 💪</p>
         </div>
       </div>
     );

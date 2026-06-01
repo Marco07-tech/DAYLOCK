@@ -1,3 +1,8 @@
+import { cn, formatTo24Hour, formatTo12Hour } from '../../../lib/utils';
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
 interface SleepQuestionsProps {
   formData: Record<string, any>;
   setFormData: (data: Record<string, any>) => void;
@@ -39,6 +44,7 @@ export function SleepQuestions({ formData, setFormData }: SleepQuestionsProps) {
   const bedtime = formData.bedtime || '';
   const wakeTime = formData.wakeTime || '';
   const sleepDuration = calculateSleepHours(bedtime, wakeTime);
+  const selectedDays = formData.days || [];
 
   const bedMinutes = parseTime(bedtime);
   const wakeMinutes = parseTime(wakeTime);
@@ -49,6 +55,13 @@ export function SleepQuestions({ formData, setFormData }: SleepQuestionsProps) {
     sleepHours = diff / 60;
   }
 
+  const toggleDay = (day: string) => {
+    const newDays = selectedDays.includes(day)
+      ? selectedDays.filter((d: string) => d !== day)
+      : [...selectedDays, day];
+    setFormData({ ...formData, days: newDays });
+  };
+
   return (
     <div className="space-y-6">
       {/* Question 1: Bedtime */}
@@ -57,11 +70,10 @@ export function SleepQuestions({ formData, setFormData }: SleepQuestionsProps) {
           Bedtime
         </label>
         <input
-          type="text"
-          placeholder="e.g. 11:00 PM"
-          value={bedtime}
-          onChange={(e) => setFormData({ ...formData, bedtime: e.target.value })}
-          className="w-full bg-bg-card border border-bg-border rounded-lg px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
+          type="time"
+          value={formatTo24Hour(bedtime)}
+          onChange={(e) => setFormData({ ...formData, bedtime: formatTo12Hour(e.target.value) })}
+          className="w-full bg-bg-card border border-bg-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent-lime transition-colors"
         />
       </div>
 
@@ -71,11 +83,10 @@ export function SleepQuestions({ formData, setFormData }: SleepQuestionsProps) {
           Wake up time
         </label>
         <input
-          type="text"
-          placeholder="e.g. 6:30 AM"
-          value={wakeTime}
-          onChange={(e) => setFormData({ ...formData, wakeTime: e.target.value })}
-          className="w-full bg-bg-card border border-bg-border rounded-lg px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
+          type="time"
+          value={formatTo24Hour(wakeTime)}
+          onChange={(e) => setFormData({ ...formData, wakeTime: formatTo12Hour(e.target.value) })}
+          className="w-full bg-bg-card border border-bg-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent-lime transition-colors"
         />
       </div>
 
@@ -92,6 +103,29 @@ export function SleepQuestions({ formData, setFormData }: SleepQuestionsProps) {
           )}
         </div>
       )}
+
+      {/* Question 3: Repeat on */}
+      <div>
+        <label className="block text-sm font-medium text-text-primary mb-3">
+          Repeat on
+        </label>
+        <div className="flex gap-2 justify-between">
+          {DAYS.map((day, idx) => (
+            <button
+              key={day}
+              onClick={() => toggleDay(day)}
+              className={cn(
+                'w-8 h-8 rounded-full text-xs font-medium transition-all duration-150 flex items-center justify-center',
+                selectedDays.includes(day)
+                  ? 'bg-accent-lime border border-accent-lime text-black'
+                  : 'bg-bg-card border border-bg-border text-text-primary'
+              )}
+            >
+              {DAY_INITIALS[idx]}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

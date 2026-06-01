@@ -19,7 +19,8 @@ export function StreakList() {
   if (tasks.length === 0) {
     return (
       <div className="bg-bg-card border border-bg-border rounded-2xl p-4 mb-3 text-center">
-        <p className="text-text-secondary text-sm">No habits tracked yet</p>
+        <p className="text-text-secondary text-sm">Complete habits daily to build</p>
+        <p className="text-text-muted text-xs mt-1">amazing streaks! 🔥</p>
       </div>
     );
   }

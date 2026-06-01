@@ -80,11 +80,8 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
     if (formData.bedtime) meta.bedtime = formData.bedtime
     if (formData.wakeTime) meta.wakeTime = formData.wakeTime
 
-    // Build scheduled days
-    let scheduledDays = formData.days || []
-    if (selectedType === 'water' || selectedType === 'sleep') {
-      scheduledDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    }
+    // Build scheduled days (default to all 7 days if not specified)
+    let scheduledDays = formData.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
     // Create task object (without id - Supabase will generate it)
     const newTask: Omit<Task, 'id' | 'streak' | 'done'> = {

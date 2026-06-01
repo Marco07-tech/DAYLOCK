@@ -1,9 +1,12 @@
 interface ProgressBarProps {
   percent: number;
+  completed?: number;
+  total?: number;
 }
 
-export function ProgressBar({ percent }: ProgressBarProps) {
+export function ProgressBar({ percent, completed, total }: ProgressBarProps) {
   const clampedPercent = Math.min(Math.max(percent, 0), 100);
+  const showStats = completed !== undefined && total !== undefined && total > 0;
 
   return (
     <div className="mb-5">
@@ -13,11 +16,19 @@ export function ProgressBar({ percent }: ProgressBarProps) {
           style={{ width: `${clampedPercent}%` }}
         />
       </div>
-      {clampedPercent > 0 && (
-        <p className="text-right text-xs text-text-secondary mt-1">
-          {clampedPercent}% complete
-        </p>
-      )}
+      <div className="flex items-center justify-between mt-2">
+        {showStats && (
+          <p className="text-xs text-text-secondary">
+            <span className="text-accent-lime font-semibold">{completed}</span> of{' '}
+            <span className="text-accent-lime font-semibold">{total}</span> habits completed
+          </p>
+        )}
+        {clampedPercent > 0 && (
+          <p className="text-right text-xs text-text-secondary ml-auto">
+            {clampedPercent}% complete
+          </p>
+        )}
+      </div>
     </div>
   );
 }

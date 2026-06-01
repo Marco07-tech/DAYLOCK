@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Plus } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useTaskStore } from '../../store/useTaskStore';
@@ -10,17 +10,52 @@ import { StatsRow } from './components/StatsRow';
 import { TaskList } from './components/TaskList';
 import { AddTaskSheet } from '../AddTask/AddTaskSheet';
 
+type ToastType = {
+  message: string;
+  variant?: 'success' | 'error';
+  action?: () => void;
+  actionLabel?: string;
+};
+
 export function DashboardPage() {
   const [showAddTask, setShowAddTask] = useState(false)
-  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null)
+  const [toast, setToast] = useState<ToastType | null>(null)
+  const [pendingUndoTaskId, setPendingUndoTaskId] = useState<string | null>(null)
+  const undoTimerRef = useRef<NodeJS.Timeout | null>(null)
   const user = useAuthStore((state) => state.user)
   const getTodayTasks = useTaskStore((state) => state.getTodayTasks)
   const getCompletionPercent = useTaskStore((state) => state.getCompletionPercent)
+  const todayLog = useTaskStore((state) => state.todayLog)
   const initTodayWorkout = useGymStore((state) => state.initTodayWorkout)
 
-  const handleToast = (message: string, variant: 'success' | 'error' = 'success') => {
-    setToast({ message, variant })
-    window.setTimeout(() => setToast(null), 2200)
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) {
+        clearTimeout(undoTimerRef.current)
+      }
+    }
+  }, [])
+
+  const handleToast = (
+    message: string, 
+    variant: 'success' | 'error' = 'success',
+    action?: () => void,
+    actionLabel?: string
+  ) => {
+    // Clear any existing undo timer
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current)
+    }
+
+    setToast({ message, variant, action, actionLabel })
+    
+    // Auto-dismiss after 3 seconds if there's an action (undo), 2.2 seconds otherwise
+    const duration = action ? 3000 : 2200
+    undoTimerRef.current = window.setTimeout(() => {
+      setToast(null)
+      setPendingUndoTaskId(null)
+    }, duration)
   }
 
   useEffect(() => {
@@ -35,6 +70,11 @@ export function DashboardPage() {
   }, [user, getTodayTasks, initTodayWorkout]);
 
   const completionPercent = getCompletionPercent();
+  
+  // Calculate completed and total today's habits
+  const todayTasks = getTodayTasks()
+  const completedCount = todayTasks.filter((t) => todayLog[t.id]).length
+  const totalCount = todayTasks.length
 
   return (
     <div className="min-h-screen bg-bg-primary pb-20 page-enter">
@@ -52,7 +92,7 @@ export function DashboardPage() {
         <BlockerBanner />
 
         {/* Progress Bar */}
-        <ProgressBar percent={completionPercent} />
+        <ProgressBar percent={completionPercent} completed={completedCount} total={totalCount} />
 
         {/* Stats Row */}
         <StatsRow />
@@ -71,13 +111,28 @@ export function DashboardPage() {
       {toast && (
         <div className="fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
           <div
-            className={`rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md ${
+            className={`rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md flex items-center justify-between ${
               toast.variant === 'success'
                 ? 'border-[rgba(168,255,62,0.25)] bg-[#11150F] text-accent-lime'
                 : 'border-[rgba(239,68,68,0.25)] bg-[#1A0F10] text-status-danger'
             }`}
           >
             <p className="text-sm font-medium">{toast.message}</p>
+            {toast.action && toast.actionLabel && (
+              <button
+                onClick={() => {
+                  if (undoTimerRef.current) {
+                    clearTimeout(undoTimerRef.current)
+                  }
+                  toast.action?.()
+                  setToast(null)
+                  setPendingUndoTaskId(null)
+                }}
+                className="ml-4 text-xs font-semibold text-accent-lime hover:opacity-70 transition-opacity active:scale-95 whitespace-nowrap"
+              >
+                {toast.actionLabel}
+              </button>
+            )}
           </div>
         </div>
       )}

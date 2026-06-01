@@ -6,10 +6,16 @@ import { useTaskStore } from '../../../store/useTaskStore'
 import { useAuthStore } from '../../../store/useAuthStore'
 import { cn } from '../../../lib/utils'
 import { Button } from '../../../components/ui/Button'
+import { EditTaskModal } from './EditTaskModal'
 
 interface TaskCardProps {
   task: Task
-  onToast: (message: string, variant?: 'success' | 'error') => void
+  onToast: (
+    message: string, 
+    variant?: 'success' | 'error',
+    action?: () => void,
+    actionLabel?: string
+  ) => void
 }
 
 export function TaskCard({ task, onToast }: TaskCardProps) {
@@ -19,8 +25,10 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
   const todayLog = useTaskStore((state) => state.todayLog)
   const user = useAuthStore((state) => state.user)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [toggling, setToggling] = useState(false)
 
   const isDone = todayLog[task.id] || false
   const streak = task.streak
@@ -54,16 +62,39 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
         {/* Checkbox */}
         <button
           onClick={async () => {
-            if (!user) return
-            await toggleTaskDone(task.id, user.id)
+            if (!user || toggling) return
+            
+            // Detect if this is a completion (not done → done)
+            const isCompletion = !isDone
+            
+            // Prevent duplicate requests
+            setToggling(true)
+            try {
+              // Toggle the task
+              await toggleTaskDone(task.id, user.id)
+              
+              // Show undo toast only for completions
+              if (isCompletion) {
+                onToast(
+                  'Habit completed ✓',
+                  'success',
+                  () => toggleTaskDone(task.id, user.id),
+                  'UNDO'
+                )
+              }
+            } finally {
+              setToggling(false)
+            }
           }}
           className={cn(
             'w-8 h-8 rounded-full border-[1.5px] flex-shrink-0 flex items-center justify-center',
             'transition-all duration-200 active:scale-95',
+            toggling && 'opacity-50 cursor-not-allowed',
             isDone
               ? 'bg-accent-lime border-accent-lime'
               : 'border-bg-border bg-transparent hover:border-bg-border'
           )}
+          disabled={toggling}
         >
           {isDone && <Check size={16} className="text-black" />}
         </button>
@@ -125,7 +156,7 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
                 type="button"
                 onClick={() => {
                   setMenuOpen(false)
-                  onToast('Edit Habit is coming soon', 'error')
+                  setShowEditModal(true)
                 }}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white transition-colors hover:bg-bg-card"
               >
@@ -153,7 +184,7 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
           <div className="w-full max-w-sm rounded-3xl border border-bg-border bg-bg-secondary p-5 shadow-2xl">
             <h3 className="font-display text-xl text-white">Delete Habit?</h3>
             <p className="mt-2 text-sm text-text-secondary">
-              This will permanently remove this habit and its completion history.
+              This will permanently remove this habit from your routine.
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
@@ -178,6 +209,13 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
           </div>
         </div>
       )}
+
+      <EditTaskModal
+        open={showEditModal}
+        task={task}
+        onClose={() => setShowEditModal(false)}
+        onToast={onToast}
+      />
     </>
   )
 }

@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useGymStore } from '../../store/useGymStore';
 import { loadPreferences, savePreferences } from '../../lib/preferences';
-import { cn } from '../../lib/utils';
+import { cn, formatTo24Hour, formatTo12Hour } from '../../lib/utils';
 
 export function SettingsPage() {
   const initialPrefs = loadPreferences();
@@ -15,6 +15,7 @@ export function SettingsPage() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [resetConfirmText, setResetConfirmText] = useState('');
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -46,11 +47,18 @@ export function SettingsPage() {
       });
       await loadGymSplit(user.id);
       setShowResetConfirm(false);
+      setResetConfirmText('');
     } catch {
       setResetError('Failed to reset data. Please try again.');
     } finally {
       setResetting(false);
     }
+  };
+
+  const handleCloseResetModal = () => {
+    setShowResetConfirm(false);
+    setResetConfirmText('');
+    setResetError(null);
   };
 
   const handleSaveTime = () => {
@@ -129,11 +137,10 @@ export function SettingsPage() {
             ) : (
               <div className="space-y-3">
                 <input
-                  type="text"
-                  value={tempTime}
-                  onChange={(e) => setTempTime(e.target.value)}
-                  placeholder="e.g. 9:00 PM"
-                  className="w-full bg-bg-primary border border-bg-border rounded-lg px-3 py-2 text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent-lime transition-colors"
+                  type="time"
+                  value={formatTo24Hour(tempTime)}
+                  onChange={(e) => setTempTime(formatTo12Hour(e.target.value))}
+                  className="w-full bg-bg-primary border border-bg-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-lime transition-colors"
                 />
                 <div className="flex gap-2">
                   <button
@@ -175,22 +182,34 @@ export function SettingsPage() {
               </button>
             ) : (
               <div className="px-4 py-3 space-y-3">
-                <p className="text-text-secondary text-sm">Are you sure? This cannot be undone.</p>
+                <p className="text-text-secondary text-sm">This will permanently delete all your data. This action cannot be undone.</p>
+                <p className="text-text-muted text-xs">Type "RESET" below to confirm:</p>
+                <input
+                  type="text"
+                  placeholder="Type RESET here"
+                  value={resetConfirmText}
+                  onChange={(e) => {
+                    setResetConfirmText(e.target.value);
+                    setResetError(null);
+                  }}
+                  className="w-full bg-bg-primary border border-bg-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-lime transition-colors uppercase"
+                  disabled={resetting}
+                />
                 {resetError && <p className="text-status-danger text-xs">{resetError}</p>}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setShowResetConfirm(false)}
+                    onClick={handleCloseResetModal}
                     disabled={resetting}
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-bg-primary border border-bg-border text-text-secondary text-xs font-medium hover:border-accent-lime transition-colors"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-bg-primary border border-bg-border text-text-secondary text-xs font-medium hover:border-accent-lime transition-colors disabled:opacity-60"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => void handleResetData()}
-                    disabled={resetting}
+                    disabled={resetting || resetConfirmText !== 'RESET'}
                     className="flex-1 px-3 py-1.5 rounded-lg bg-status-danger text-white text-xs font-semibold hover:bg-opacity-90 transition-opacity disabled:opacity-60"
                   >
-                    {resetting ? 'Resetting...' : 'Reset'}
+                    {resetting ? 'Resetting...' : 'Delete All Data'}
                   </button>
                 </div>
               </div>
@@ -198,11 +217,12 @@ export function SettingsPage() {
           </div>
         </div>
 
-        <div className="text-center mt-8">
+        <div className="text-center mt-8 pb-4">
           <p className="text-accent-lime font-semibold font-display text-base">DayLock</p>
           <p className="text-text-muted text-xs mt-2">Version 1.0.0</p>
           <p className="text-text-muted text-xs">Lock in your daily routine</p>
         </div>
+        <p className="text-text-muted text-xs text-center">v1.0.0</p>
       </div>
     </div>
   );
