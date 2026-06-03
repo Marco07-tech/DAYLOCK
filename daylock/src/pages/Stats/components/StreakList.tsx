@@ -1,4 +1,4 @@
-import { Dumbbell, BookOpen, Droplet, Moon, Activity, Star } from 'lucide-react';
+import { Dumbbell, BookOpen, Droplet, Moon, Activity, Footprints, Star } from 'lucide-react';
 import { useTaskStore } from '../../../store/useTaskStore';
 import type { TaskType } from '../../../types';
 import { cn } from '../../../lib/utils';
@@ -9,6 +9,7 @@ const TASK_ICONS: Record<TaskType, React.ReactNode> = {
   water: <Droplet size={18} className="text-accent-lime" />,
   sleep: <Moon size={18} className="text-accent-lime" />,
   cardio: <Activity size={18} className="text-accent-lime" />,
+  steps: <Footprints size={18} className="text-accent-lime" />,
   custom: <Star size={18} className="text-accent-lime" />,
 };
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Dumbbell } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Dumbbell, Apple } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useGymStore } from '../../store/useGymStore'
 import { useTaskStore } from '../../store/useTaskStore'
@@ -9,9 +9,13 @@ import { Button } from '../../components/ui/Button'
 import { ProgressBar } from '../../components/ui/ProgressBar'
 import { WorkoutLogger } from './components/WorkoutLogger'
 import { MySplit } from './components/MySplit'
+import { NutritionTab } from './components/NutritionTab'
 
 export function GymPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const initialSection = searchParams.get('s') === 'nutrition' ? 'nutrition' : 'workout'
+  const [activeSection, setActiveSection] = useState<'workout' | 'nutrition'>(initialSection)
   const [activeTab, setActiveTab] = useState<'logger' | 'split'>('logger')
 
   const user = useAuthStore((state) => state.user)
@@ -24,13 +28,22 @@ export function GymPage() {
   const toggleTaskDone = useTaskStore((state) => state.toggleTaskDone)
   const todayLog = useTaskStore((state) => state.todayLog)
   const tasks = useTaskStore((state) => state.tasks)
+  const flushPendingGymSave = useGymStore((state) => state.flushPendingGymSave)
+
+  // Flush pending debounced saves on unmount
+  useEffect(() => {
+    return () => {
+      flushPendingGymSave()
+    }
+  }, [flushPendingGymSave])
 
   // Initialize workout on mount if needed
   useEffect(() => {
     if (todayWorkout === null && user) {
       initTodayWorkout(user.id)
     }
-  }, [todayWorkout, initTodayWorkout, user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps — initTodayWorkout is a stable Zustand action reference
+  }, [todayWorkout, user])
 
   const handleCompleteWorkout = async () => {
     if (!user) return
@@ -74,62 +87,101 @@ export function GymPage() {
         </p>
       </div>
 
-      {/* Tab Switcher */}
-      <div className="flex gap-2 p-3 bg-bg-primary">
+      {/* Section Switcher: Workout / Nutrition */}
+      <div className="flex gap-2 p-3 pb-0 bg-bg-primary">
         <button
-          onClick={() => setActiveTab('logger')}
+          onClick={() => setActiveSection('workout')}
           className={cn(
             'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
-            activeTab === 'logger'
+            activeSection === 'workout'
               ? 'bg-accent-lime text-black'
               : 'bg-bg-card border border-bg-border text-text-secondary hover:border-accent-lime'
           )}
         >
-          Workout Logger
+          <div className="flex items-center justify-center gap-1.5">
+            <Dumbbell size={16} />
+            Workout
+          </div>
         </button>
         <button
-          onClick={() => setActiveTab('split')}
+          onClick={() => setActiveSection('nutrition')}
           className={cn(
             'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
-            activeTab === 'split'
+            activeSection === 'nutrition'
               ? 'bg-accent-lime text-black'
               : 'bg-bg-card border border-bg-border text-text-secondary hover:border-accent-lime'
           )}
         >
-          My Split
+          <div className="flex items-center justify-center gap-1.5">
+            <Apple size={16} />
+            Nutrition
+          </div>
         </button>
       </div>
 
-      {/* Content */}
-      {activeTab === 'logger' && (
+      {/* Workout Content */}
+      {activeSection === 'workout' && (
         <>
-          <WorkoutLogger />
-
-          {/* Progress and Complete Button */}
-          {!isRestDay && todayWorkout && (
-            <div className="px-4 pb-4">
-              <div className="mb-3">
-                <p className="text-text-secondary text-xs mb-2">
-                  {completedExercises}/{totalExercises} exercises
-                </p>
-                <ProgressBar percent={progressPercent} />
-              </div>
-
-              {isWorkoutComplete() && (
-                <Button
-                  variant="primary"
-                  onClick={handleCompleteWorkout}
-                  className="w-full h-14 text-base font-semibold"
-                >
-                  Complete Workout 💪
-                </Button>
+          {/* Tab Switcher */}
+          <div className="flex gap-2 p-3 bg-bg-primary">
+            <button
+              onClick={() => setActiveTab('logger')}
+              className={cn(
+                'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
+                activeTab === 'logger'
+                  ? 'bg-accent-lime text-black'
+                  : 'bg-bg-card border border-bg-border text-text-secondary hover:border-accent-lime'
               )}
-            </div>
+            >
+              Workout Logger
+            </button>
+            <button
+              onClick={() => setActiveTab('split')}
+              className={cn(
+                'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
+                activeTab === 'split'
+                  ? 'bg-accent-lime text-black'
+                  : 'bg-bg-card border border-bg-border text-text-secondary hover:border-accent-lime'
+              )}
+            >
+              My Split
+            </button>
+          </div>
+
+          {activeTab === 'logger' && (
+            <>
+              <WorkoutLogger />
+
+              {/* Progress and Complete Button */}
+              {!isRestDay && todayWorkout && (
+                <div className="px-4 pb-4">
+                  <div className="mb-3">
+                    <p className="text-text-secondary text-xs mb-2">
+                      {completedExercises}/{totalExercises} exercises
+                    </p>
+                    <ProgressBar percent={progressPercent} />
+                  </div>
+
+                  {isWorkoutComplete() && (
+                    <Button
+                      variant="primary"
+                      onClick={handleCompleteWorkout}
+                      className="w-full h-14 text-base font-semibold"
+                    >
+                      Complete Workout 💪
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
           )}
+
+          {activeTab === 'split' && <MySplit />}
         </>
       )}
 
-      {activeTab === 'split' && <MySplit />}
+      {/* Nutrition Content */}
+      {activeSection === 'nutrition' && <NutritionTab />}
     </div>
   );
 }

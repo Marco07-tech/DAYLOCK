@@ -55,7 +55,7 @@ export function WeeklyChart({ weekOffset }: WeeklyChartProps) {
     <div className="bg-bg-card border border-bg-border rounded-2xl p-4 mb-3">
       <p className="text-text-primary text-sm font-medium mb-3">Weekly Overview</p>
 
-      <div className="flex items-flex-end gap-2 h-32 justify-between">
+      <div className="flex items-end gap-2 h-32 justify-between">
         {weekDays.map((day, idx) => {
           const percentage = logByDate.get(day.iso) ?? 0;
           const isToday = isCurrentWeek && idx === todayIndex;

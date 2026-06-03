@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { Button } from '../../components/ui/Button'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useTaskStore } from '../../store/useTaskStore'
-import { formatTo24Hour, formatTo12Hour } from '../../lib/utils'
+import { formatTo24Hour, formatTo12Hour, parseTimeToMinutes } from '../../lib/utils'
 
 type Step = 1 | 2 | 3
 type Goal = 'cut' | 'bulk' | 'maintain' | null
@@ -22,27 +22,6 @@ const GOALS: Array<{
 ]
 
 const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-function parseTimeToMinutes(input: string): number | null {
-  const value = input.trim().toLowerCase()
-  if (!value) return null
-
-  const match = value.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/)
-  if (!match) return null
-
-  let hours = Number.parseInt(match[1], 10)
-  const minutes = Number.parseInt(match[2] ?? '0', 10)
-  const period = match[3]
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes) || minutes > 59 || hours < 1 || hours > 12) {
-    return null
-  }
-
-  if (period === 'pm' && hours !== 12) hours += 12
-  if (period === 'am' && hours === 12) hours = 0
-
-  return (hours * 60) + minutes
-}
 
 function getSleepSummary(wakeTime: string, sleepTime: string) {
   const wake = parseTimeToMinutes(wakeTime)
@@ -165,27 +144,33 @@ export function OnboardingPage() {
       setUser({ ...user, name })
       setOnboardingCompleted(true)
 
-      if (wakeTime && sleepTime) {
-        const { error: taskError } = await supabase.from('tasks').insert({
-          user_id: user.id,
-          type: 'sleep',
-          name: `Sleep by ${sleepTime}`,
-          icon: 'moon',
-          meta: `Wake: ${wakeTime} · Bed: ${sleepTime}`,
-          scheduled_days: ALL_DAYS,
-          scheduled_time: sleepTime,
-          streak: 0,
-          done: false,
-        })
+      try {
+        if (wakeTime && sleepTime) {
+          const { error: taskError } = await supabase.from('tasks').insert({
+            user_id: user.id,
+            type: 'sleep',
+            name: `Sleep by ${sleepTime}`,
+            icon: 'moon',
+            meta: `Wake: ${wakeTime} · Bed: ${sleepTime}`,
+            scheduled_days: ALL_DAYS,
+            scheduled_time: sleepTime,
+            streak: 0,
+            done: false,
+          })
 
-        if (taskError && import.meta.env.DEV) {
-          console.error('Sleep task error:', taskError)
-        } else {
-          await loadTasks(user.id)
+          if (taskError && import.meta.env.DEV) {
+            console.error('Sleep task error:', taskError)
+          }
+        }
+
+        await loadTasks(user.id)
+        navigate('/dashboard', { replace: true })
+      } catch (loadErr) {
+        setFinishError('Data failed to load. Please try again.')
+        if (import.meta.env.DEV) {
+          console.error('Onboarding load error:', loadErr)
         }
       }
-
-      navigate('/dashboard', { replace: true })
     } catch (err) {
       setFinishError('Something went wrong. Please try again.')
       if (import.meta.env.DEV) {
@@ -204,7 +189,7 @@ export function OnboardingPage() {
         {step === 1 && (
           <div className={`flex flex-1 flex-col ${stepClass}`}>
             <div className="mt-2">
-              <h1 className="font-display text-[28px] text-[#A8FF3E]">DayLock 👋</h1>
+              <h1 className="font-display text-[28px] text-[#A8FF3E]">DayLock <span aria-hidden="true">👋</span></h1>
               <p className="mt-2 text-[14px] text-[#8B8B9E]">Let's set up your routine</p>
             </div>
 

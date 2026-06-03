@@ -1,13 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ChartBar, Settings } from 'tabler-icons-react';
-import { Dumbbell } from 'lucide-react';
+import { LayoutDashboard, Dumbbell, BarChart2, Cog } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const NAV_ITEMS = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
   { path: '/gym', icon: Dumbbell, label: 'Gym' },
-  { path: '/stats', icon: ChartBar, label: 'Stats' },
-  { path: '/settings', icon: Settings, label: 'Settings' },
+  { path: '/stats', icon: BarChart2, label: 'Stats' },
+  { path: '/settings', icon: Cog, label: 'Settings' },
 ];
 
 export function BottomNav() {

@@ -1,8 +1,10 @@
 import type { Session } from '@supabase/supabase-js'
+import { supabase } from './supabase'
 import { ensureProfile, isOnboardingComplete, profileToAppUser, displayNameFromAuthUser } from './profile'
 import { useAuthStore } from '../store/useAuthStore'
 import { useTaskStore } from '../store/useTaskStore'
 import { useGymStore } from '../store/useGymStore'
+import { useNutritionStore } from '../store/useNutritionStore'
 import { shouldReset, setLastResetDate } from './utils'
 import { startupLog } from './startupLog'
 
@@ -16,7 +18,17 @@ export async function syncAuthSession(session: Session): Promise<SessionSyncResu
   startupLog('syncAuthSession start', { userId: session.user.id })
   const name = displayNameFromAuthUser(session.user)
 
-  const profile = await ensureProfile(session.user.id, name)
+  let profile
+  try {
+    profile = await ensureProfile(session.user.id, name)
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.error('Failed to sync auth session — profile error:', err)
+    }
+    clearAuthStores()
+    throw err
+  }
+
   const user = profileToAppUser(session, profile)
   const onboardingCompleted = isOnboardingComplete(profile)
 
@@ -60,7 +72,48 @@ export async function loadUserDataStores(userId: string): Promise<void> {
       return
     }
 
+    startupLog('loadTodayNutrition start', { userId })
+    await useNutritionStore.getState().loadTodayNutrition(userId)
+    startupLog('loadTodayNutrition done', { userId })
+
+    if (generation !== userDataLoadGeneration) {
+      startupLog('loadUserDataStores aborted (stale after loadTodayNutrition)', { generation })
+      return
+    }
+
     if (shouldReset()) {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yesterdayIso = yesterday.toISOString().split('T')[0]
+
+      const { data: yesterdayCompletions } = await supabase
+        .from('task_completions')
+        .select('task_id, completed')
+        .eq('user_id', userId)
+        .eq('date', yesterdayIso)
+
+      const completedYesterday = new Set(
+        (yesterdayCompletions ?? [])
+          .filter((c: { completed: boolean }) => c.completed)
+          .map((c: { task_id: string }) => c.task_id)
+      )
+
+      const currentTasks = useTaskStore.getState().tasks
+      for (const task of currentTasks) {
+        if (task.streak > 0 && !completedYesterday.has(task.id)) {
+          await supabase
+            .from('tasks')
+            .update({ streak: 0 })
+            .eq('id', task.id)
+            .eq('user_id', userId)
+
+          useTaskStore.setState((s) => ({
+            streaks: { ...s.streaks, [task.id]: 0 },
+            tasks: s.tasks.map((t) => (t.id === task.id ? { ...t, streak: 0 } : t)),
+          }))
+        }
+      }
+
       await useTaskStore.getState().resetTodayTasks(userId)
       setLastResetDate()
     }
@@ -99,6 +152,11 @@ export function clearAuthStores(): void {
   useGymStore.setState({
     todayWorkout: null,
     workoutHistory: [],
+    userId: null,
+    isLoading: false,
+  })
+  useNutritionStore.setState({
+    todayLog: null,
     userId: null,
     isLoading: false,
   })

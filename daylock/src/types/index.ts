@@ -6,7 +6,7 @@ export interface User {
 }
 
 // Task types
-export type TaskType = 'gym' | 'study' | 'water' | 'sleep' | 'cardio' | 'custom';
+export type TaskType = 'gym' | 'study' | 'water' | 'sleep' | 'cardio' | 'steps' | 'custom';
 
 export interface Task {
   id: string;

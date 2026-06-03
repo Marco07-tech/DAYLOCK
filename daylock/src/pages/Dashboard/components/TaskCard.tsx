@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Task } from '../../../types/index'
 import { useTaskStore } from '../../../store/useTaskStore'
 import { useAuthStore } from '../../../store/useAuthStore'
+import { supabase } from '../../../lib/supabase'
 import { cn } from '../../../lib/utils'
 import { Button } from '../../../components/ui/Button'
 import { EditTaskModal } from './EditTaskModal'
@@ -33,6 +34,8 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
   const isDone = todayLog[task.id] || false
   const streak = task.streak
   const hasHighStreak = streak >= 7
+  const previousDoneRef = useRef(false)
+  const previousStreakRef = useRef(0)
 
   const handleDelete = async () => {
     if (!user || deleting) return
@@ -64,21 +67,50 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
           onClick={async () => {
             if (!user || toggling) return
             
-            // Detect if this is a completion (not done → done)
+            // Capture previous state BEFORE toggle (for undo restore)
+            previousDoneRef.current = isDone
+            previousStreakRef.current = streak
             const isCompletion = !isDone
             
-            // Prevent duplicate requests
             setToggling(true)
             try {
-              // Toggle the task
               await toggleTaskDone(task.id, user.id)
               
-              // Show undo toast only for completions
               if (isCompletion) {
                 onToast(
                   'Habit completed ✓',
                   'success',
-                  () => toggleTaskDone(task.id, user.id),
+                  async () => {
+                    const prevDone = previousDoneRef.current
+                    const prevStreak = previousStreakRef.current
+                    const todayStr = new Date().toISOString().split('T')[0]
+
+                    useTaskStore.setState((s) => ({
+                      todayLog: { ...s.todayLog, [task.id]: prevDone },
+                      streaks: { ...s.streaks, [task.id]: prevStreak },
+                      tasks: s.tasks.map((t) =>
+                        t.id === task.id ? { ...t, streak: prevStreak } : t
+                      ),
+                    }))
+
+                    await supabase
+                      .from('task_completions')
+                      .upsert(
+                        {
+                          user_id: user.id,
+                          task_id: task.id,
+                          date: todayStr,
+                          completed: prevDone,
+                        },
+                        { onConflict: 'user_id,task_id,date' }
+                      )
+
+                    await supabase
+                      .from('tasks')
+                      .update({ streak: prevStreak })
+                      .eq('id', task.id)
+                      .eq('user_id', user.id)
+                  },
                   'UNDO'
                 )
               }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { Dumbbell, BookOpen, Droplet, Moon, Activity, Star } from 'lucide-react'
 import type { TaskType, Task } from '../../types'
+import { TYPE_ICONS, TYPE_NAMES } from '../../constants/taskTypes'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useTaskStore } from '../../store/useTaskStore'
 import { useGymStore } from '../../store/useGymStore'
@@ -13,24 +13,7 @@ import { StudyQuestions } from './components/StudyQuestions'
 import { WaterQuestions } from './components/WaterQuestions'
 import { SleepQuestions } from './components/SleepQuestions'
 import { CustomQuestions } from './components/CustomQuestions'
-
-const TYPE_ICONS: Record<TaskType, React.ReactNode> = {
-  gym: <Dumbbell size={32} className="text-accent-lime" />,
-  study: <BookOpen size={32} className="text-accent-lime" />,
-  water: <Droplet size={32} className="text-accent-lime" />,
-  sleep: <Moon size={32} className="text-accent-lime" />,
-  cardio: <Activity size={32} className="text-accent-lime" />,
-  custom: <Star size={32} className="text-accent-lime" />,
-}
-
-const TYPE_NAMES: Record<TaskType, string> = {
-  gym: 'Gym',
-  study: 'Study',
-  water: 'Water',
-  sleep: 'Sleep',
-  cardio: 'Cardio',
-  custom: 'Custom',
-}
+import { StepsQuestions } from './components/StepsQuestions'
 
 interface AddTaskSheetProps {
   open: boolean
@@ -67,6 +50,8 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
       taskName = `Water (${formData.target})`
     } else if (selectedType === 'sleep' && formData.bedtime) {
       taskName = `Sleep by ${formData.bedtime}`
+    } else if (selectedType === 'steps') {
+      taskName = '10,000 steps today'
     } else if (selectedType === 'custom' && formData.name) {
       taskName = formData.name
     }
@@ -199,6 +184,9 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
               {selectedType === 'cardio' && (
                 <GymQuestions formData={formData} setFormData={setFormData} />
               )}
+              {selectedType === 'steps' && (
+                <StepsQuestions formData={formData} setFormData={setFormData} />
+              )}
               {selectedType === 'custom' && (
                 <CustomQuestions formData={formData} setFormData={setFormData} />
               )}
@@ -292,6 +280,15 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
                       )}
                       {formData.time && (
                         <p className="text-text-secondary text-sm">{formData.time}</p>
+                      )}
+                    </>
+                  )}
+                  {selectedType === 'steps' && (
+                    <>
+                      {formData.days?.length && (
+                        <p className="text-text-secondary text-sm">
+                          {(formData.days as string[]).join(', ')}
+                        </p>
                       )}
                     </>
                   )}

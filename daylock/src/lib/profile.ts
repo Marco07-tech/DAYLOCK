@@ -22,7 +22,7 @@ export function displayNameFromAuthUser(user: SupabaseUser, fallback = 'User'): 
 
 export async function fetchProfile(userId: string): Promise<ProfileRecord | null> {
   const { data, error } = await traceAwait('fetchProfile', () =>
-    supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+    supabase.from('profiles').select('id, name, goal, onboarding_completed, created_at').eq('id', userId).maybeSingle()
   )
 
   if (error) {
@@ -51,7 +51,7 @@ export async function ensureProfile(userId: string, name: string): Promise<Profi
         onboarding_completed: false,
         created_at: createdAt,
       })
-      .select('*')
+      .select('id, name, goal, onboarding_completed, created_at')
       .single()
   )
 
@@ -59,7 +59,7 @@ export async function ensureProfile(userId: string, name: string): Promise<Profi
     if (import.meta.env.DEV) {
       console.error('Failed to create profile:', error)
     }
-    return null
+    throw error
   }
 
   return data as ProfileRecord

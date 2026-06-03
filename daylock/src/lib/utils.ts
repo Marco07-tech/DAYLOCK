@@ -27,27 +27,7 @@ export function getGreeting(): string {
  * Formats a date to "Friday, May 29" format
  */
 export function formatDate(date: Date = new Date()): string {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  const dayName = days[date.getDay()];
-  const monthName = months[date.getMonth()];
-  const dayOfMonth = date.getDate();
-
-  return `${dayName}, ${monthName} ${dayOfMonth}`;
+  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
 /**
@@ -84,16 +64,17 @@ export function shouldReset(): boolean {
 
 /**
  * Convert 12-hour format (e.g., "6:00 PM") to 24-hour format (e.g., "18:00")
+ * Accepts "6:00 PM", "6 PM" (minutes default to "00"), or "6:00 pm"
  * Returns empty string if input is empty or invalid
  */
 export function formatTo24Hour(time12: string): string {
   if (!time12 || !time12.trim()) return '';
 
-  const match = time12.trim().toLowerCase().match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/)
+  const match = time12.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/)
   if (!match) return ''
 
   let hours = parseInt(match[1], 10)
-  const minutes = match[2]
+  const minutes = match[2] ?? '00'
   const period = match[3]
 
   if (period === 'pm' && hours !== 12) {
@@ -103,6 +84,17 @@ export function formatTo24Hour(time12: string): string {
   }
 
   return `${String(hours).padStart(2, '0')}:${minutes}`
+}
+
+/**
+ * Convert 12-hour format to minutes since midnight.
+ * Returns null if input is empty or invalid.
+ */
+export function parseTimeToMinutes(input: string): number | null {
+  const hours24 = formatTo24Hour(input)
+  if (!hours24) return null
+  const [h, m] = hours24.split(':').map(Number)
+  return h * 60 + m
 }
 
 /**

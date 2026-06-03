@@ -12,6 +12,16 @@ export type DailyLogRow = {
   tasks_total: number
 }
 
+type TaskUpdate = {
+  name?: string
+  icon?: string
+  type?: string
+  meta?: string
+  streak?: number
+  scheduled_days?: string[]
+  scheduled_time?: string | null
+}
+
 interface TaskState {
   tasks: Task[]
   todayLog: { [taskId: string]: boolean }
@@ -78,7 +88,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
       const [tasksResult, todayLog] = await Promise.all([
         traceAwait('loadTasks.tasks.select', () =>
-          supabase.from('tasks').select('*').eq('user_id', userId).order('created_at')
+          supabase.from('tasks').select('id, type, name, icon, meta, streak, scheduled_days, scheduled_time, created_at').eq('user_id', userId).order('created_at')
         ),
         loadTodayCompletions(userId, today),
       ])
@@ -104,7 +114,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           icon: string
           meta: string
           streak: number
-          done: boolean
           scheduled_days: string[]
           scheduled_time: string
           created_at: string
@@ -233,11 +242,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const task = state.tasks.find((t) => t.id === id)
       if (!task) return
 
+      const dayName = getDayName()
+      if (!task.scheduledDays.includes(dayName)) return
+
       const wasDoneToday = state.todayLog[id] || false
       const newDone = !wasDoneToday
       const today = getTodayIsoDate()
       const currentStreak = state.streaks[id] || 0
-      const newStreak = newDone && !wasDoneToday ? currentStreak + 1 : currentStreak
+      const newStreak = newDone ? currentStreak + 1 : Math.max(0, currentStreak - 1)
 
       set((s) => ({
         todayLog: {
@@ -265,16 +277,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         console.error('Failed to save task completion:', completionError)
       }
 
-      if (newDone && !wasDoneToday) {
-        const { error: streakError } = await supabase
-          .from('tasks')
-          .update({ streak: newStreak })
-          .eq('id', id)
-          .eq('user_id', userId)
+      const { error: streakError } = await supabase
+        .from('tasks')
+        .update({ streak: newStreak })
+        .eq('id', id)
+        .eq('user_id', userId)
 
-        if (streakError && import.meta.env.DEV) {
-          console.error('Failed to update streak:', streakError)
-        }
+      if (streakError && import.meta.env.DEV) {
+        console.error('Failed to update streak:', streakError)
       }
 
       await get().saveDailyLog(userId)
@@ -304,7 +314,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       }))
 
       // Build update object for Supabase
-      const dbUpdate: Record<string, any> = {}
+      const dbUpdate: TaskUpdate = {}
       if (updates.name) dbUpdate.name = updates.name
       if (updates.scheduledDays) dbUpdate.scheduled_days = updates.scheduledDays
       if (updates.scheduledTime !== undefined) dbUpdate.scheduled_time = updates.scheduledTime
@@ -432,6 +442,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         supabase.from('tasks').delete().eq('user_id', userId),
         supabase.from('workout_logs').delete().eq('user_id', userId),
         supabase.from('gym_splits').delete().eq('user_id', userId),
+        supabase.from('nutrition_logs').delete().eq('user_id', userId),
       ])
 
       set({

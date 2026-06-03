@@ -18,13 +18,13 @@ export function HeatmapGrid() {
   const { weeks, logByDate } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const cells: { date: Date; iso: string; completion: number }[] = [];
+    const cells: { date: Date; iso: string }[] = [];
 
     for (let i = 29; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       const iso = date.toISOString().split('T')[0];
-      cells.push({ date, iso, completion: 0 });
+      cells.push({ date, iso });
     }
 
     const map = new Map<string, number>();
@@ -63,7 +63,7 @@ export function HeatmapGrid() {
           <div key={weekIdx} className="flex gap-1 items-center">
             <div className="w-7 text-right text-xs text-text-muted">{WEEK_LABELS[weekIdx]}</div>
             {week.map((cell) => {
-              const completion = logByDate.get(cell.iso) ?? cell.completion;
+              const completion = logByDate.get(cell.iso) ?? 0;
               return (
                 <div
                   key={cell.iso}

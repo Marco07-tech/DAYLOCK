@@ -1,4 +1,4 @@
-import { Dumbbell, BookOpen, Droplet, Moon, Activity, Star } from 'lucide-react';
+import { Dumbbell, BookOpen, Droplet, Moon, Activity, Footprints, Star } from 'lucide-react';
 import type { TaskType } from '../../../types';
 import { cn } from '../../../lib/utils';
 
@@ -13,6 +13,7 @@ const TASK_TYPES: Array<{ type: TaskType; label: string; icon: React.ReactNode }
   { type: 'water', label: 'Water', icon: <Droplet size={24} /> },
   { type: 'sleep', label: 'Sleep', icon: <Moon size={24} /> },
   { type: 'cardio', label: 'Cardio', icon: <Activity size={24} /> },
+  { type: 'steps', label: 'Steps', icon: <Footprints size={24} /> },
   { type: 'custom', label: 'Custom', icon: <Star size={24} /> },
 ];
 

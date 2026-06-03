@@ -9,6 +9,7 @@ import { BlockerBanner } from './components/BlockerBanner';
 import { StatsRow } from './components/StatsRow';
 import { TaskList } from './components/TaskList';
 import { AddTaskSheet } from '../AddTask/AddTaskSheet';
+import { NutritionSummaryCard } from './components/NutritionSummaryCard';
 
 type ToastType = {
   message: string;
@@ -20,22 +21,36 @@ type ToastType = {
 export function DashboardPage() {
   const [showAddTask, setShowAddTask] = useState(false)
   const [toast, setToast] = useState<ToastType | null>(null)
-  const [pendingUndoTaskId, setPendingUndoTaskId] = useState<string | null>(null)
-  const undoTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [toastExiting, setToastExiting] = useState(false)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const user = useAuthStore((state) => state.user)
   const getTodayTasks = useTaskStore((state) => state.getTodayTasks)
   const getCompletionPercent = useTaskStore((state) => state.getCompletionPercent)
   const todayLog = useTaskStore((state) => state.todayLog)
   const initTodayWorkout = useGymStore((state) => state.initTodayWorkout)
 
-  // Cleanup timer on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      if (undoTimerRef.current) {
-        clearTimeout(undoTimerRef.current)
-      }
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
     }
   }, [])
+
+  const dismissToast = (immediate = false) => {
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+    if (immediate) {
+      setToastExiting(false)
+      setToast(null)
+      return
+    }
+    setToastExiting(true)
+    exitTimerRef.current = setTimeout(() => {
+      setToastExiting(false)
+      setToast(null)
+    }, 300)
+  }
 
   const handleToast = (
     message: string, 
@@ -49,12 +64,12 @@ export function DashboardPage() {
     }
 
     setToast({ message, variant, action, actionLabel })
+    setToastExiting(false)
     
     // Auto-dismiss after 3 seconds if there's an action (undo), 2.2 seconds otherwise
     const duration = action ? 3000 : 2200
     undoTimerRef.current = window.setTimeout(() => {
-      setToast(null)
-      setPendingUndoTaskId(null)
+      dismissToast()
     }, duration)
   }
 
@@ -106,10 +121,13 @@ export function DashboardPage() {
 
         {/* Task List */}
         <TaskList onToast={handleToast} />
+
+        {/* Nutrition Summary Card */}
+        <NutritionSummaryCard />
       </div>
 
       {toast && (
-        <div className="fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2">
+        <div className={`fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 transition-opacity duration-300 ${toastExiting ? 'opacity-0' : 'opacity-100'}`}>
           <div
             className={`rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md flex items-center justify-between ${
               toast.variant === 'success'
@@ -121,12 +139,9 @@ export function DashboardPage() {
             {toast.action && toast.actionLabel && (
               <button
                 onClick={() => {
-                  if (undoTimerRef.current) {
-                    clearTimeout(undoTimerRef.current)
-                  }
+                  if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
                   toast.action?.()
-                  setToast(null)
-                  setPendingUndoTaskId(null)
+                  dismissToast(true)
                 }}
                 className="ml-4 text-xs font-semibold text-accent-lime hover:opacity-70 transition-opacity active:scale-95 whitespace-nowrap"
               >

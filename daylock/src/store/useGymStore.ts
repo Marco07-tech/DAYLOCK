@@ -58,6 +58,7 @@ interface GymState {
   completeWorkout: (userId: string) => Promise<void>
   getTodaySplit: () => GymSplit
   isWorkoutComplete: () => boolean
+  flushPendingGymSave: () => Promise<void>
   _saveWorkoutDebounced: () => Promise<void>
 }
 
@@ -75,7 +76,7 @@ export const useGymStore = create<GymState>((set, get) => ({
       syncTrace('loadGymSplit', 'before', { userId })
       set({ isLoading: true, userId })
       const { data, error } = await traceAwait('loadGymSplit.select', () =>
-        supabase.from('gym_splits').select('*').eq('user_id', userId)
+        supabase.from('gym_splits').select('day_name, split_name').eq('user_id', userId)
       )
 
       if (error && import.meta.env.DEV) {
@@ -149,7 +150,7 @@ export const useGymStore = create<GymState>((set, get) => ({
       const { data, error } = await traceAwait('loadTodayWorkout.select', () =>
         supabase
           .from('workout_logs')
-          .select('*')
+          .select('id, date, split_name, exercises, completed, created_at')
           .eq('user_id', userId)
           .eq('date', today)
           .maybeSingle()
@@ -396,6 +397,14 @@ export const useGymStore = create<GymState>((set, get) => ({
     return state.todayWorkout.exercises.every((exercise: Exercise) =>
       exercise.sets.every((set: Set) => set.done)
     )
+  },
+
+  flushPendingGymSave: async () => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+    await get()._saveWorkoutDebounced()
   },
 
   _saveWorkoutDebounced: async () => {

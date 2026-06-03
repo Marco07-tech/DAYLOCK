@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Bell, Clock, LogOut, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Clock, LogOut, Trash2, Apple, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useGymStore } from '../../store/useGymStore';
+import { useNutritionStore } from '../../store/useNutritionStore';
 import { loadPreferences, savePreferences } from '../../lib/preferences';
 import { cn, formatTo24Hour, formatTo12Hour } from '../../lib/utils';
 
@@ -17,10 +18,38 @@ export function SettingsPage() {
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetConfirmText, setResetConfirmText] = useState('');
 
+  const [caloriesGoal, setCaloriesGoalState] = useState('');
+  const [proteinGoal, setProteinGoalState] = useState('');
+  const [waterGoal, setWaterGoalState] = useState(8);
+  const [nutritionSaving, setNutritionSaving] = useState(false);
+  const [nutritionSaved, setNutritionSaved] = useState(false);
+
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const resetAllUserData = useTaskStore((state) => state.resetAllUserData);
   const loadGymSplit = useGymStore((state) => state.loadGymSplit);
+  const todayLog = useNutritionStore((state) => state.todayLog);
+  const loadTodayNutrition = useNutritionStore((state) => state.loadTodayNutrition);
+  const loadBodyweight = useNutritionStore((state) => state.loadBodyweight);
+  const setCalorieGoal = useNutritionStore((state) => state.setCalorieGoal);
+  const setProteinGoalAction = useNutritionStore((state) => state.setProteinGoal);
+  const setWaterGoalAction = useNutritionStore((state) => state.setWaterGoal);
+  const saveGoals = useNutritionStore((state) => state.saveGoals);
+
+  useEffect(() => {
+    if (user) {
+      loadTodayNutrition(user.id)
+      loadBodyweight(user.id)
+    }
+  }, [user, loadTodayNutrition, loadBodyweight])
+
+  useEffect(() => {
+    if (todayLog) {
+      setCaloriesGoalState(String(todayLog.caloriesGoal))
+      setProteinGoalState(String(todayLog.proteinGoal))
+      setWaterGoalState(todayLog.waterGoal)
+    }
+  }, [todayLog])
 
   const persistPrefs = (partial: Partial<typeof initialPrefs>) => {
     const next = {
@@ -161,6 +190,101 @@ export function SettingsPage() {
           </div>
         </div>
 
+        <p className="text-text-muted text-xs font-medium tracking-widest mb-2 mt-5">NUTRITION GOALS</p>
+        <div className="space-y-0 border border-bg-border rounded-2xl overflow-hidden mb-6">
+          <div className="bg-bg-card px-4 py-3 border-b border-bg-border">
+            <div className="flex items-center gap-3 mb-2">
+              <Apple size={18} className="text-text-secondary" />
+              <span className="text-text-primary text-sm font-medium">Daily Targets</span>
+            </div>
+            <div className="space-y-3 mt-3">
+              <div className="flex items-center gap-2">
+                <label className="text-text-secondary text-xs w-20">Calories</label>
+                <input
+                  type="number"
+                  value={caloriesGoal}
+                  onChange={(e) => setCaloriesGoalState(e.target.value)}
+                  className="flex-1 bg-bg-primary border border-bg-border rounded-lg px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-accent-lime transition-colors"
+                  placeholder="e.g. 1800"
+                />
+                <span className="text-text-muted text-xs">kcal</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-text-secondary text-xs w-20">Protein</label>
+                <input
+                  type="number"
+                  value={proteinGoal}
+                  onChange={(e) => setProteinGoalState(e.target.value)}
+                  className="flex-1 bg-bg-primary border border-bg-border rounded-lg px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-accent-lime transition-colors"
+                  placeholder="e.g. 120"
+                />
+                <span className="text-text-muted text-xs">g</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-text-secondary text-xs w-20">Water</label>
+                <div className="flex-1 flex items-center gap-2">
+                  {[4, 6, 8, 10, 12].map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setWaterGoalState(g)}
+                      className={cn(
+                        'px-2 py-1 rounded-lg text-xs font-medium transition-colors',
+                        waterGoal === g
+                          ? 'bg-accent-lime text-black'
+                          : 'bg-bg-primary border border-bg-border text-text-secondary hover:border-accent-lime'
+                      )}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                  <span className="text-text-muted text-xs">glasses</span>
+                </div>
+              </div>
+            </div>
+            {nutritionSaved && (
+              <p className="text-accent-lime text-xs mt-2">Goals saved!</p>
+            )}
+          </div>
+          <div className="bg-bg-card px-4 py-3 flex gap-2">
+            <button
+              onClick={async () => {
+                if (!user) return
+                setNutritionSaving(true)
+                const cGoal = parseInt(caloriesGoal, 10)
+                const pGoal = parseInt(proteinGoal, 10)
+                if (!isNaN(cGoal)) setCalorieGoal(cGoal)
+                if (!isNaN(pGoal)) setProteinGoalAction(pGoal)
+                setWaterGoalAction(waterGoal)
+                await saveGoals(user.id)
+                setNutritionSaving(false)
+                setNutritionSaved(true)
+                setTimeout(() => setNutritionSaved(false), 2000)
+              }}
+              disabled={nutritionSaving}
+              className="flex-1 px-3 py-1.5 rounded-lg bg-accent-lime text-black text-xs font-semibold hover:bg-accent-lime-dark transition-colors disabled:opacity-60"
+            >
+              {nutritionSaving ? 'Saving...' : 'Save Goals'}
+            </button>
+            <button
+              onClick={async () => {
+                if (!user) return
+                await loadBodyweight(user.id)
+                const bw = useNutritionStore.getState().bodyweight
+                if (bw && bw > 0) {
+                  const suggestedCalories = bw * 30
+                  const suggestedProtein = Math.round(bw * 1.6)
+                  setCaloriesGoalState(String(suggestedCalories))
+                  setProteinGoalState(String(suggestedProtein))
+                }
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg-primary border border-bg-border text-text-secondary text-xs font-medium hover:border-accent-lime transition-colors"
+            >
+              <RefreshCw size={12} />
+              Recalculate
+            </button>
+          </div>
+        </div>
+
         <p className="text-text-muted text-xs font-medium tracking-widest mb-2 mt-5">DATA</p>
         <div className="space-y-0 border border-bg-border rounded-2xl overflow-hidden">
           <button
@@ -219,10 +343,9 @@ export function SettingsPage() {
 
         <div className="text-center mt-8 pb-4">
           <p className="text-accent-lime font-semibold font-display text-base">DayLock</p>
-          <p className="text-text-muted text-xs mt-2">Version 1.0.0</p>
+          <p className="text-text-muted text-xs mt-2">v1.0.0</p>
           <p className="text-text-muted text-xs">Lock in your daily routine</p>
         </div>
-        <p className="text-text-muted text-xs text-center">v1.0.0</p>
       </div>
     </div>
   );

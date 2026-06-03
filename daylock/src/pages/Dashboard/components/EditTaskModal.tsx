@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { Dumbbell, BookOpen, Droplet, Moon, Activity, Star } from 'lucide-react'
-import type { Task, TaskType } from '../../../types'
+import type { Task } from '../../../types'
+import { TYPE_ICONS, TYPE_NAMES } from '../../../constants/taskTypes'
 import { useAuthStore } from '../../../store/useAuthStore'
 import { useTaskStore } from '../../../store/useTaskStore'
 import { cn } from '../../../lib/utils'
@@ -11,24 +11,6 @@ import { StudyQuestions } from '../../AddTask/components/StudyQuestions'
 import { WaterQuestions } from '../../AddTask/components/WaterQuestions'
 import { SleepQuestions } from '../../AddTask/components/SleepQuestions'
 import { CustomQuestions } from '../../AddTask/components/CustomQuestions'
-
-const TYPE_ICONS: Record<TaskType, React.ReactNode> = {
-  gym: <Dumbbell size={32} className="text-accent-lime" />,
-  study: <BookOpen size={32} className="text-accent-lime" />,
-  water: <Droplet size={32} className="text-accent-lime" />,
-  sleep: <Moon size={32} className="text-accent-lime" />,
-  cardio: <Activity size={32} className="text-accent-lime" />,
-  custom: <Star size={32} className="text-accent-lime" />,
-}
-
-const TYPE_NAMES: Record<TaskType, string> = {
-  gym: 'Gym',
-  study: 'Study',
-  water: 'Water',
-  sleep: 'Sleep',
-  cardio: 'Cardio',
-  custom: 'Custom',
-}
 
 interface EditTaskModalProps {
   open: boolean

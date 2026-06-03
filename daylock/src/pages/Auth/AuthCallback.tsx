@@ -10,6 +10,8 @@ export default function AuthCallback() {
   const setIsLoading = useAuthStore((state) => state.setIsLoading)
 
   useEffect(() => {
+    let cancelled = false
+
     const handleCallback = async () => {
       try {
         setIsLoading(true)
@@ -23,20 +25,21 @@ export default function AuthCallback() {
             if (import.meta.env.DEV) {
               console.error('Code exchange failed:', error)
             }
-            navigate('/login', { replace: true })
+            if (!cancelled) navigate('/login', { replace: true })
             return
           }
 
           const { onboardingCompleted } = await syncAuthSession(data.session)
-          setIsLoading(false)
-          void loadUserDataStores(data.session.user.id)
-          navigate(getPostAuthPath(onboardingCompleted), { replace: true })
+          if (!cancelled) setIsLoading(false)
+          if (!cancelled) void loadUserDataStores(data.session.user.id)
+          if (!cancelled) navigate(getPostAuthPath(onboardingCompleted), { replace: true })
           return
         }
 
         const hashParams = new URLSearchParams(window.location.hash.slice(1))
         if (hashParams.get('access_token')) {
           await new Promise((resolve) => setTimeout(resolve, 500))
+          if (cancelled) return
           const {
             data: { session },
             error,
@@ -44,9 +47,9 @@ export default function AuthCallback() {
 
           if (session) {
             const { onboardingCompleted } = await syncAuthSession(session)
-            setIsLoading(false)
-            void loadUserDataStores(session.user.id)
-            navigate(getPostAuthPath(onboardingCompleted), { replace: true })
+            if (!cancelled) setIsLoading(false)
+            if (!cancelled) void loadUserDataStores(session.user.id)
+            if (!cancelled) navigate(getPostAuthPath(onboardingCompleted), { replace: true })
             return
           }
 
@@ -55,51 +58,35 @@ export default function AuthCallback() {
           }
         }
 
-        navigate('/login', { replace: true })
+        if (!cancelled) navigate('/login', { replace: true })
       } catch (err) {
         if (import.meta.env.DEV) {
           console.error('Callback error:', err)
         }
-        navigate('/login', { replace: true })
+        if (!cancelled) navigate('/login', { replace: true })
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
 
     handleCallback()
+
+    return () => {
+      cancelled = true
+    }
   }, [navigate, setIsLoading])
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#0A0A0F',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '16px',
-      }}
-    >
-      <div
-        style={{
-          fontSize: '24px',
-          fontWeight: '600',
-          color: '#A8FF3E',
-          fontFamily: 'Space Grotesk, sans-serif',
-        }}
-      >
+    <div className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center gap-4">
+      <div className="text-[#A8FF3E] text-2xl font-semibold" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
         DayLock
       </div>
-      <div style={{ display: 'flex', gap: '6px' }}>
+      <div className="flex gap-[6px]">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
+            className="w-2 h-2 rounded-full bg-[#A8FF3E]"
             style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#A8FF3E',
               animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
             }}
           />

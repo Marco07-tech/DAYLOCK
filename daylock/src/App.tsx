@@ -2,10 +2,14 @@ import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { useAuthStore } from './store/useAuthStore'
-import { supabase } from './lib/supabase'
+import { supabase, verifyRLS } from './lib/supabase'
 import { getPostAuthPath } from './lib/profile'
 import { clearAuthStores, syncAuthSession, loadUserDataStores } from './lib/sessionSync'
 import { startupLog } from './lib/startupLog'
+
+if (import.meta.env.DEV) {
+  verifyRLS()
+}
 import { AppShell } from './components/layout/AppShell'
 import { LoginPage } from './pages/Auth/LoginPage'
 import { SignupPage } from './pages/Auth/SignupPage'

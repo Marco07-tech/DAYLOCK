@@ -25,7 +25,7 @@ export function GymQuestions({ formData, setFormData }: GymQuestionsProps) {
       {/* Question 1: Gym days */}
       <div>
         <label className="block text-sm font-medium text-text-primary mb-3">
-          Gym ke din select karo
+          Select gym days
         </label>
         <div className="flex gap-2 justify-between">
           {DAYS.map((day, idx) => (
