@@ -92,7 +92,7 @@ export function StatsPage() {
 
         {bestDay && (
           <div className="bg-bg-card border border-bg-border rounded-2xl p-4 mb-3">
-            <p className="text-text-secondary text-xs mb-2 font-medium">YOUR BEST DAY</p>
+            <p className="text-text-secondary text-xs mb-2 font-medium">BEST STREAK</p>
             <div className="flex items-center gap-2">
               <span className="text-2xl">🏆</span>
               <div>

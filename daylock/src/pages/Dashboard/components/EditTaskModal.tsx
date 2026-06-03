@@ -11,6 +11,7 @@ import { StudyQuestions } from '../../AddTask/components/StudyQuestions'
 import { WaterQuestions } from '../../AddTask/components/WaterQuestions'
 import { SleepQuestions } from '../../AddTask/components/SleepQuestions'
 import { CustomQuestions } from '../../AddTask/components/CustomQuestions'
+import { StepsQuestions } from '../../AddTask/components/StepsQuestions'
 
 interface EditTaskModalProps {
   open: boolean
@@ -87,6 +88,8 @@ export function EditTaskModal({ open, task, onClose, onToast }: EditTaskModalPro
       initial.goal = meta.goal || ''
       initial.duration = meta.duration || ''
       initial.days = task.scheduledDays || []
+    } else if (task.type === 'steps') {
+      initial.days = task.scheduledDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     }
 
     setFormData(initial)
@@ -323,6 +326,9 @@ export function EditTaskModal({ open, task, onClose, onToast }: EditTaskModalPro
               )}
               {task.type === 'cardio' && (
                 <CustomQuestions formData={formData} setFormData={setFormData} />
+              )}
+              {task.type === 'steps' && (
+                <StepsQuestions formData={formData} setFormData={setFormData} />
               )}
 
               <div className="grid grid-cols-2 gap-3">

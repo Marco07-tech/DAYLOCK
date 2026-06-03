@@ -80,15 +80,15 @@ function DayRow({
       <FlashOverlay show={flash} />
 
       {/* Day name */}
-      <div className="col-span-3 relative z-10">
+      <div className="col-span-3 relative z-10 flex items-center gap-1 min-w-0">
         {isToday && (
           <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-8 bg-primary-fixed-dim rounded-r-full" />
         )}
-        <span className={cn('font-label-md', isToday && 'text-primary-fixed-dim font-bold')}>
+        <span className={cn('font-label-md truncate', isToday && 'text-primary-fixed-dim font-bold')}>
           {day}
         </span>
         {isToday && (
-          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary-fixed-dim text-on-primary-fixed font-bold uppercase text-[10px]">
+          <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-primary-fixed-dim text-on-primary-fixed font-bold uppercase text-[10px]">
             Today
           </span>
         )}

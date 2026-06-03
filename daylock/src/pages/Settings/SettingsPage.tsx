@@ -247,18 +247,25 @@ export function SettingsPage() {
           </div>
           <div className="bg-bg-card px-4 py-3 flex gap-2">
             <button
-              onClick={async () => {
-                if (!user) return
-                setNutritionSaving(true)
-                const cGoal = parseInt(caloriesGoal, 10)
-                const pGoal = parseInt(proteinGoal, 10)
-                if (!isNaN(cGoal)) setCalorieGoal(cGoal)
-                if (!isNaN(pGoal)) setProteinGoalAction(pGoal)
-                setWaterGoalAction(waterGoal)
-                await saveGoals(user.id)
-                setNutritionSaving(false)
-                setNutritionSaved(true)
-                setTimeout(() => setNutritionSaved(false), 2000)
+              onClick={() => {
+                (async () => {
+                  if (!user) return
+                  setNutritionSaving(true)
+                  try {
+                    const cGoal = parseInt(caloriesGoal, 10)
+                    const pGoal = parseInt(proteinGoal, 10)
+                    if (!isNaN(cGoal)) setCalorieGoal(cGoal)
+                    if (!isNaN(pGoal)) setProteinGoalAction(pGoal)
+                    setWaterGoalAction(waterGoal)
+                    await saveGoals(user.id)
+                    setNutritionSaved(true)
+                    setTimeout(() => setNutritionSaved(false), 2000)
+                  } catch (err) {
+                    if (import.meta.env.DEV) console.error('Failed to save goals:', err)
+                  } finally {
+                    setNutritionSaving(false)
+                  }
+                })()
               }}
               disabled={nutritionSaving}
               className="flex-1 px-3 py-1.5 rounded-lg bg-accent-lime text-black text-xs font-semibold hover:bg-accent-lime-dark transition-colors disabled:opacity-60"
@@ -266,16 +273,22 @@ export function SettingsPage() {
               {nutritionSaving ? 'Saving...' : 'Save Goals'}
             </button>
             <button
-              onClick={async () => {
-                if (!user) return
-                await loadBodyweight(user.id)
-                const bw = useNutritionStore.getState().bodyweight
-                if (bw && bw > 0) {
-                  const suggestedCalories = bw * 30
-                  const suggestedProtein = Math.round(bw * 1.6)
-                  setCaloriesGoalState(String(suggestedCalories))
-                  setProteinGoalState(String(suggestedProtein))
-                }
+              onClick={() => {
+                (async () => {
+                  if (!user) return
+                  try {
+                    await loadBodyweight(user.id)
+                  } catch (err) {
+                    if (import.meta.env.DEV) console.error('Failed to load bodyweight:', err)
+                  }
+                  const bw = useNutritionStore.getState().bodyweight
+                  if (bw && bw > 0) {
+                    const suggestedCalories = bw * 30
+                    const suggestedProtein = Math.round(bw * 1.6)
+                    setCaloriesGoalState(String(suggestedCalories))
+                    setProteinGoalState(String(suggestedProtein))
+                  }
+                })()
               }}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg-primary border border-bg-border text-text-secondary text-xs font-medium hover:border-accent-lime transition-colors"
             >

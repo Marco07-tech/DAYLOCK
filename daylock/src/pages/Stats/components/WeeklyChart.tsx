@@ -60,7 +60,7 @@ export function WeeklyChart({ weekOffset }: WeeklyChartProps) {
           const percentage = logByDate.get(day.iso) ?? 0;
           const isToday = isCurrentWeek && idx === todayIndex;
           const isFuture = isCurrentWeek && todayIndex >= 0 && idx > todayIndex;
-          const height = Math.max(4, (percentage / 100) * 100);
+          const height = Math.max(4, percentage);
 
           let bgColor = '#1A1A24';
           if (isToday) bgColor = '#A8FF3E';

@@ -139,6 +139,7 @@ export async function syncSessionToStores(
 
 export function clearAuthStores(): void {
   userDataLoadGeneration++
+  sessionStorage.removeItem('daylock-workout-start')
   useAuthStore.getState().setUser(null)
   useAuthStore.getState().setIsAuthenticated(false)
   useAuthStore.getState().setOnboardingCompleted(null)

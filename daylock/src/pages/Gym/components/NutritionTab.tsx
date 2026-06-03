@@ -75,6 +75,7 @@ export function NutritionTab() {
   const [setupGoal, setSetupGoal] = useState<'cut' | 'maintain' | 'bulk' | null>(null)
   const [saving, setSaving] = useState(false)
   const bottomSheetRef = useRef<HTMLDivElement>(null)
+  const customKcalRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (user) {
@@ -108,6 +109,7 @@ export function NutritionTab() {
     if (!selectedMeal || !user) return
 
     if (option.label === 'Custom') {
+      customKcalRef.current?.focus()
       return
     }
 
@@ -399,6 +401,7 @@ export function NutritionTab() {
               <div className="space-y-2 pt-2 border-t border-bg-border">
                 <div className="flex gap-2">
                   <input
+                    ref={customKcalRef}
                     type="number"
                     value={customKcal}
                     onChange={(e) => setCustomKcal(e.target.value)}
