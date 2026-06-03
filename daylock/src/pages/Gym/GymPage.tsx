@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Dumbbell, Apple } from 'lucide-react'
+import { Apple } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useGymStore } from '../../store/useGymStore'
 import { useTaskStore } from '../../store/useTaskStore'
 import { cn } from '../../lib/utils'
-import { Button } from '../../components/ui/Button'
-import { ProgressBar } from '../../components/ui/ProgressBar'
 import { WorkoutLogger } from './components/WorkoutLogger'
 import { MySplit } from './components/MySplit'
 import { NutritionTab } from './components/NutritionTab'
@@ -48,7 +46,6 @@ export function GymPage() {
   const handleCompleteWorkout = async () => {
     if (!user) return
     await completeWorkout(user.id)
-    // Find and toggle the gym task
     const gymTask = tasks.find((t) => t.type === 'gym')
     if (gymTask && !todayLog[gymTask.id]) {
       await toggleTaskDone(gymTask.id, user.id)
@@ -59,7 +56,6 @@ export function GymPage() {
   const todaySplit = getTodaySplit()
   const isRestDay = todaySplit === 'Rest' || todayWorkout?.splitName === 'Rest'
 
-  // Calculate progress
   const totalExercises = todayWorkout?.exercises.length || 0
   const completedExercises =
     todayWorkout?.exercises.filter((ex) => ex.sets.every((set) => set.done)).length || 0
@@ -67,85 +63,87 @@ export function GymPage() {
     totalExercises > 0 ? Math.round((completedExercises / totalExercises) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-bg-primary pb-20 page-enter">
-      {/* Header */}
-      <div className="border-b border-bg-border px-4 py-4">
-        <div className="flex items-center justify-between mb-2">
+    <div className="min-h-screen bg-background page-enter">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-background border-b border-outline-variant/30 px-container-padding-mobile py-4">
+        <div className="flex items-center justify-between max-w-[430px] mx-auto">
           <button
             onClick={() => navigate(-1)}
-            className="text-text-primary hover:text-accent-lime transition-colors p-1"
+            className="text-on-surface hover:text-primary-fixed-dim transition-colors p-1"
           >
-            <ArrowLeft size={20} />
+            <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="text-text-primary text-xl font-semibold flex-1 text-center">Gym</h1>
-          <div className="text-accent-lime p-1">
-            <Dumbbell size={20} />
-          </div>
+          <h1 className="font-headline-md text-on-surface flex-1 text-center">Gym</h1>
+          <span className="material-symbols-outlined text-primary-fixed-dim">fitness_center</span>
         </div>
-        <p className="text-center text-accent-lime text-xs font-medium">
+        <p className="text-center text-primary-fixed-dim font-label-sm mt-1">
           {todaySplit} {todaySplit !== 'Rest' && 'Day'}
         </p>
       </div>
 
       {/* Section Switcher: Workout / Nutrition */}
-      <div className="flex gap-2 p-3 pb-0 bg-bg-primary">
-        <button
-          onClick={() => setActiveSection('workout')}
-          className={cn(
-            'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
-            activeSection === 'workout'
-              ? 'bg-accent-lime text-black'
-              : 'bg-bg-card border border-bg-border text-text-secondary hover:border-accent-lime'
-          )}
-        >
-          <div className="flex items-center justify-center gap-1.5">
-            <Dumbbell size={16} />
-            Workout
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveSection('nutrition')}
-          className={cn(
-            'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
-            activeSection === 'nutrition'
-              ? 'bg-accent-lime text-black'
-              : 'bg-bg-card border border-bg-border text-text-secondary hover:border-accent-lime'
-          )}
-        >
-          <div className="flex items-center justify-center gap-1.5">
-            <Apple size={16} />
-            Nutrition
-          </div>
-        </button>
+      <div className="px-container-padding-mobile pt-3 pb-0 max-w-[430px] mx-auto">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveSection('workout')}
+            className={cn(
+              'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
+              activeSection === 'workout'
+                ? 'bg-primary-fixed-dim text-on-primary-fixed'
+                : 'bg-surface-container border border-outline-variant text-on-secondary-container hover:border-primary-fixed-dim'
+            )}
+          >
+            <div className="flex items-center justify-center gap-1.5">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>fitness_center</span>
+              Workout
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveSection('nutrition')}
+            className={cn(
+              'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
+              activeSection === 'nutrition'
+                ? 'bg-primary-fixed-dim text-on-primary-fixed'
+                : 'bg-surface-container border border-outline-variant text-on-secondary-container hover:border-primary-fixed-dim'
+            )}
+          >
+            <div className="flex items-center justify-center gap-1.5">
+              <Apple size={16} />
+              Nutrition
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Workout Content */}
       {activeSection === 'workout' && (
-        <>
-          {/* Tab Switcher */}
-          <div className="flex gap-2 p-3 bg-bg-primary">
-            <button
-              onClick={() => setActiveTab('logger')}
-              className={cn(
-                'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
-                activeTab === 'logger'
-                  ? 'bg-accent-lime text-black'
-                  : 'bg-bg-card border border-bg-border text-text-secondary hover:border-accent-lime'
-              )}
-            >
-              Workout Logger
-            </button>
-            <button
-              onClick={() => setActiveTab('split')}
-              className={cn(
-                'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
-                activeTab === 'split'
-                  ? 'bg-accent-lime text-black'
-                  : 'bg-bg-card border border-bg-border text-text-secondary hover:border-accent-lime'
-              )}
-            >
-              My Split
-            </button>
+        <div className="max-w-[430px] mx-auto px-container-padding-mobile">
+          {/* Sub-tab switcher */}
+          <div className="py-3">
+            <div className="inline-flex p-1 rounded-lg bg-surface-container border border-outline-variant">
+              <button
+                onClick={() => setActiveTab('logger')}
+                className={cn(
+                  'px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-150',
+                  activeTab === 'logger'
+                    ? 'bg-primary-fixed-dim text-on-primary-fixed'
+                    : 'text-on-secondary-container hover:text-on-surface'
+                )}
+              >
+                Workout Logger
+              </button>
+              <button
+                onClick={() => setActiveTab('split')}
+                className={cn(
+                  'px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-150',
+                  activeTab === 'split'
+                    ? 'bg-primary-fixed-dim text-on-primary-fixed'
+                    : 'text-on-secondary-container hover:text-on-surface'
+                )}
+              >
+                My Split
+              </button>
+            </div>
           </div>
 
           {activeTab === 'logger' && (
@@ -154,22 +152,30 @@ export function GymPage() {
 
               {/* Progress and Complete Button */}
               {!isRestDay && todayWorkout && (
-                <div className="px-4 pb-4">
-                  <div className="mb-3">
-                    <p className="text-text-secondary text-xs mb-2">
+                <div className="pt-4 pb-8 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-sm text-on-surface-variant">
                       {completedExercises}/{totalExercises} exercises
-                    </p>
-                    <ProgressBar percent={progressPercent} />
+                    </span>
+                    <span className="font-label-sm text-on-surface-variant">
+                      {progressPercent}%
+                    </span>
+                  </div>
+                  <div className="h-1 bg-surface-container-lowest rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary-fixed-dim rounded-full transition-all duration-500"
+                      style={{ width: `${progressPercent}%` }}
+                    />
                   </div>
 
                   {isWorkoutComplete() && (
-                    <Button
-                      variant="primary"
+                    <button
                       onClick={handleCompleteWorkout}
-                      className="w-full h-14 text-base font-semibold"
+                      className="w-full py-4 rounded-xl bg-primary-fixed-dim text-on-primary-fixed font-headline-md active:scale-95 transition-all shadow-[0_10px_40px_rgba(171,214,0,0.15)] flex items-center justify-center gap-2"
                     >
-                      Complete Workout 💪
-                    </Button>
+                      <span className="material-symbols-outlined">check_circle</span>
+                      Complete Workout
+                    </button>
                   )}
                 </div>
               )}
@@ -177,11 +183,15 @@ export function GymPage() {
           )}
 
           {activeTab === 'split' && <MySplit />}
-        </>
+        </div>
       )}
 
       {/* Nutrition Content */}
-      {activeSection === 'nutrition' && <NutritionTab />}
+      {activeSection === 'nutrition' && (
+        <div className="max-w-[430px] mx-auto">
+          <NutritionTab />
+        </div>
+      )}
     </div>
   );
 }
