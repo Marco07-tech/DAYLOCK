@@ -65,7 +65,7 @@ export function GymPage() {
   return (
     <div className="min-h-screen bg-background page-enter">
       {/* Sticky Header */}
-      <div className="sticky top-0 z-20 bg-background border-b border-outline-variant/30 px-container-padding-mobile py-4">
+      <div className="sticky top-0 z-20 bg-background border-b border-outline-variant/30 px-container-padding py-4">
         <div className="flex items-center justify-between max-w-[430px] mx-auto">
           <button
             onClick={() => navigate(-1)}
@@ -82,7 +82,7 @@ export function GymPage() {
       </div>
 
       {/* Section Switcher: Workout / Nutrition */}
-      <div className="px-container-padding-mobile pt-3 pb-0 max-w-[430px] mx-auto">
+      <div className="px-container-padding pt-3 pb-0 max-w-[430px] mx-auto">
         <div className="flex gap-2">
           <button
             onClick={() => setActiveSection('workout')}
@@ -117,7 +117,7 @@ export function GymPage() {
 
       {/* Workout Content */}
       {activeSection === 'workout' && (
-        <div className="max-w-[430px] mx-auto px-container-padding-mobile">
+        <div className="max-w-[430px] mx-auto px-container-padding">
           {/* Sub-tab switcher */}
           <div className="py-3">
             <div className="inline-flex p-1 rounded-lg bg-surface-container border border-outline-variant">

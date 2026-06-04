@@ -12,14 +12,14 @@ export function BottomNav() {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface-container-low shadow-[0_-4px_20px_rgba(26,26,26,0.03)] rounded-t-xl max-w-md mx-auto">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 flex justify-around items-center px-4 py-3 bg-surface-container-low shadow-[0_-4px_20px_rgba(26,26,26,0.03)] rounded-t-xl">
       {NAV_ITEMS.map(({ path, icon, label }) => {
         const isActive = location.pathname === path;
         return (
           <button
             key={path}
             onClick={() => navigate(path)}
-            className={`flex flex-col items-center justify-center transition-all ${
+              className={`flex flex-col items-center justify-center transition-all w-16 ${
               isActive
                 ? 'bg-primary-container text-on-primary-container rounded-full px-4 py-1'
                 : 'text-on-surface-variant opacity-60 hover:text-primary'

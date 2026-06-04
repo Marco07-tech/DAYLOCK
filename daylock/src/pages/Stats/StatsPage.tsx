@@ -25,9 +25,9 @@ export function StatsPage() {
   if (tasks.length === 0) {
     return (
       <div className="min-h-screen bg-background pb-20 page-enter flex flex-col items-center justify-center px-4">
-        <span className="material-symbols-outlined text-[48px] text-text-muted mb-4 opacity-50">bar_chart</span>
-        <h2 className="text-text-primary font-semibold text-lg mb-2">No data yet</h2>
-        <p className="text-text-secondary text-sm text-center mb-6 max-w-xs">
+        <span className="material-symbols-outlined text-[48px] text-on-surface-variant mb-4 opacity-50">bar_chart</span>
+        <h2 className="font-headline-sm text-headline-sm text-on-surface mb-2">No data yet</h2>
+        <p className="font-body-md text-body-md text-on-surface-variant text-center mb-6 max-w-xs">
           Track habits daily to unlock your stats, streaks, and activity heatmap.
         </p>
         <Button onClick={() => navigate('/dashboard')} className="w-full">
@@ -63,24 +63,24 @@ export function StatsPage() {
   return (
     <div className="min-h-screen bg-background pb-20 page-enter">
       <div className="px-4 py-5 max-w-md mx-auto">
-        <h1 className="text-text-primary text-2xl font-semibold mb-5">Statistics</h1>
+        <h1 className="font-display-lg-mobile text-display-lg-mobile text-on-surface mb-5">Statistics</h1>
 
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => setWeekOffset(weekOffset - 1)}
-            className="w-8 h-8 rounded-full bg-bg-card border border-bg-border text-text-primary hover:border-accent-lime transition-all flex items-center justify-center"
+            className="w-8 h-8 rounded-full bg-surface-container-low border border-outline-variant text-on-surface hover:border-primary transition-all flex items-center justify-center"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
           </button>
-          <p className="text-text-primary text-sm font-medium">{weekRange}</p>
+          <p className="font-label-md text-label-md text-on-surface">{weekRange}</p>
           <button
             onClick={() => setWeekOffset(weekOffset + 1)}
             disabled={weekOffset === 0}
             className={cn(
-              'w-8 h-8 rounded-full border text-text-primary transition-all flex items-center justify-center',
+              'w-8 h-8 rounded-full border text-on-surface transition-all flex items-center justify-center',
               weekOffset === 0
-                ? 'bg-bg-border border-bg-border opacity-50 cursor-not-allowed'
-                : 'bg-bg-card border-bg-border hover:border-accent-lime'
+                ? 'bg-outline-variant border-outline-variant opacity-50 cursor-not-allowed'
+                : 'bg-surface-container-low border-outline-variant hover:border-primary'
             )}
           >
             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -90,14 +90,14 @@ export function StatsPage() {
         <WeeklyChart weekOffset={weekOffset} />
 
         {bestDay && (
-          <div className="bg-bg-card border border-bg-border rounded-2xl p-4 mb-3">
-            <p className="text-text-secondary text-xs mb-2 font-medium">BEST STREAK</p>
+          <div className="bg-surface-container-low card-shadow rounded-[24px] p-6 mb-3">
+            <p className="font-label-sm text-label-sm text-on-surface-variant mb-2">BEST STREAK</p>
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🏆</span>
+              <span className="material-symbols-outlined text-[32px] text-primary">emoji_events</span>
               <div>
-                <p className="text-text-primary font-semibold text-sm">{bestDay.name}</p>
-                <p className="text-accent-lime text-xs font-medium">
-                  🔥 {streaks[bestDay.id] || 0} day streak
+                <p className="font-label-md text-label-md text-on-surface">{bestDay.name}</p>
+                <p className="font-label-sm text-label-sm text-primary font-medium">
+                  {streaks[bestDay.id] || 0} day streak
                 </p>
               </div>
             </div>

@@ -61,7 +61,7 @@ export default {
         'accent-lime-dark': '#6a7869',
         'accent-lime-muted': 'rgba(81,96,81,0.1)',
         'status-danger': '#ba1a1a',
-        'status-warning': '#747872',
+        'status-warning': '#c99f2e',
         'status-success': '#516051',
       },
       fontFamily: {

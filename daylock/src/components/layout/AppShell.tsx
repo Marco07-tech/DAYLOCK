@@ -17,7 +17,7 @@ export function AppShell({ children }: AppShellProps) {
       }}
       className="flex flex-col"
     >
-      <div className="flex-1 pb-24">
+      <div className="flex-1 pb-[calc(24px+env(safe-area-inset-bottom,0px))]">
         {children}
       </div>
       <BottomNav />

@@ -145,7 +145,7 @@ export function OnboardingPage() {
             </svg>
           </div>
           <div className="text-center space-y-3">
-            <h1 className="font-[Literata] italic text-[44px] leading-tight text-on-surface">
+            <h1 className="font-display-lg-mobile italic text-display-lg-mobile leading-tight text-on-surface">
               Welcome to DayLock
             </h1>
             <p className="font-body-lg text-body-lg text-on-surface-variant whitespace-pre-line">
@@ -185,7 +185,7 @@ export function OnboardingPage() {
             <span className="font-label-sm text-label-sm text-on-surface-variant">2 OF 4</span>
           </div>
           <div>
-            <h2 className="font-[Literata] italic text-[36px] text-on-surface leading-tight">What's your focus?</h2>
+            <h2 className="font-headline-md italic text-headline-md text-on-surface leading-tight">What's your focus?</h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-2">We'll personalize your targets.</p>
           </div>
           <div className="space-y-3 flex-1">
@@ -241,7 +241,7 @@ export function OnboardingPage() {
             <span className="font-label-sm text-label-sm text-on-surface-variant">3 OF 4</span>
           </div>
           <div>
-            <h2 className="font-[Literata] italic text-[36px] text-on-surface leading-tight">Your sleep rhythm</h2>
+            <h2 className="font-headline-md italic text-headline-md text-on-surface leading-tight">Your sleep rhythm</h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-2">We'll track this as a daily habit.</p>
           </div>
           <div className="space-y-4">
@@ -301,7 +301,7 @@ export function OnboardingPage() {
             <span className="font-label-sm text-label-sm text-on-surface-variant">4 OF 4</span>
           </div>
           <div>
-            <h2 className="font-[Literata] italic text-[36px] text-on-surface leading-tight">A few details</h2>
+            <h2 className="font-headline-md italic text-headline-md text-on-surface leading-tight">A few details</h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-2">Help us tailor your daily plan.</p>
           </div>
           <div className="bg-surface-container-low rounded-xl p-6 card-shadow space-y-4">
@@ -336,7 +336,7 @@ export function OnboardingPage() {
             className="w-full bg-primary text-on-primary py-4 px-8 rounded-full font-label-md shadow-sm active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isFinishing ? (
-              <><span className="material-symbols-outlined animate-spin text-[20px]">sync</span> Setting up...</>
+              <><span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Setting up...</>
             ) : (
               'Let\'s go 🔒'
             )}

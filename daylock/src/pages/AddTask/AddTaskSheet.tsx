@@ -128,12 +128,12 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
               <div className="flex justify-between px-2">
                 {TYPE_LIST.map(({ type, icon }) => (
                   <div key={type} className="flex flex-col items-center gap-2 cursor-pointer" onClick={() => setSelectedType(type)}>
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
                       selectedType === type
                         ? 'bg-primary text-on-primary shadow-md scale-110'
                         : 'bg-surface-container-low text-on-surface-variant hover:bg-primary hover:text-on-primary'
                     }`}>
-                      <span className="material-symbols-outlined text-[24px]">{icon}</span>
+                      <span className="material-symbols-outlined text-[28px]">{icon}</span>
                     </div>
                     <span className={`font-label-sm text-label-sm ${selectedType === type ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
                       {TYPE_NAMES[type]}

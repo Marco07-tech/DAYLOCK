@@ -38,7 +38,7 @@ export function Button({
       {...props}
     >
       {isLoading && (
-        <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
+        <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
       )}
       {children}
     </button>

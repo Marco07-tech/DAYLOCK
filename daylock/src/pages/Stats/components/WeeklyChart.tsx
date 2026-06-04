@@ -52,8 +52,8 @@ export function WeeklyChart({ weekOffset }: WeeklyChartProps) {
   }, [dailyLogs]);
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-2xl p-4 mb-3">
-      <p className="text-text-primary text-sm font-medium mb-3">Weekly Overview</p>
+    <div className="bg-surface-container-low card-shadow rounded-[24px] p-6 mb-3">
+      <p className="font-label-md text-label-md text-on-surface mb-3">Weekly Overview</p>
 
       <div className="flex items-end gap-2 h-32 justify-between">
         {weekDays.map((day, idx) => {
@@ -62,15 +62,15 @@ export function WeeklyChart({ weekOffset }: WeeklyChartProps) {
           const isFuture = isCurrentWeek && todayIndex >= 0 && idx > todayIndex;
           const height = Math.max(4, percentage);
 
-          let bgColor = '#1A1A24';
-          if (isToday) bgColor = '#A8FF3E';
-          else if (!isFuture && percentage > 0) bgColor = 'rgba(168, 255, 62, 0.4)';
+          let bgColor = '#c4c8c0';
+          if (isToday) bgColor = '#516051';
+          else if (!isFuture && percentage > 0) bgColor = 'rgba(81, 96, 81, 0.4)';
 
           return (
             <div key={day.iso} className="flex flex-col items-center flex-1">
               <div className="flex flex-col items-center gap-1.5 h-24">
                 {percentage > 0 && (
-                  <span className="text-xs text-text-muted h-4">{percentage}%</span>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant h-4">{percentage}%</span>
                 )}
                 <div
                   className="transition-all duration-500 rounded-t"
@@ -83,8 +83,8 @@ export function WeeklyChart({ weekOffset }: WeeklyChartProps) {
                 />
               </div>
               <span
-                className={`text-xs mt-2 ${
-                  isToday ? 'text-accent-lime font-semibold' : 'text-text-secondary'
+                className={`font-label-sm text-label-sm mt-2 ${
+                  isToday ? 'text-primary font-semibold' : 'text-on-surface-variant'
                 }`}
               >
                 {day.label}

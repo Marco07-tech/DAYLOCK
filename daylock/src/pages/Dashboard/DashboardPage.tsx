@@ -240,7 +240,7 @@ export function DashboardPage() {
                       }}
                     >
                       <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <div className={`w-10 h-10 flex items-center justify-center rounded-xl flex-shrink-0 ${
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-xl flex-shrink-0 transition-all duration-200 ${
                           isDone ? 'bg-primary/10 text-primary' : 'bg-surface-variant text-on-surface-variant'
                         }`}>
                           <span
@@ -257,25 +257,25 @@ export function DashboardPage() {
                           </span>
                         </div>
                         <div className="min-w-0">
-                          <p className={`font-label-md text-label-md text-on-surface truncate ${
+                          <p className={`font-label-md text-label-md text-on-surface truncate transition-all duration-200 ${
                             isDone ? 'line-through opacity-50' : ''
                           }`}>
                             {task.name}
                           </p>
-                          <p className={`font-label-sm text-label-sm ${
+                          <p className={`font-label-sm text-label-sm transition-all duration-200 ${
                             isDone ? 'text-primary' : 'text-on-surface-variant opacity-60'
                           }`}>
                             {isDone ? `${streak}d streak` : 'Ready to start'}
                           </p>
                         </div>
                       </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                      <div key={String(isDone)} className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
                         isDone
-                          ? 'border-primary bg-primary'
+                          ? 'border-primary bg-primary habit-check-bounce'
                           : 'border-outline-variant hover:border-primary'
                       }`}>
                         {isDone && (
-                          <span className="material-symbols-outlined text-[16px] text-white">check</span>
+                          <span className="material-symbols-outlined text-[16px] text-on-primary">check</span>
                         )}
                       </div>
                     </div>
@@ -286,7 +286,7 @@ export function DashboardPage() {
                         e.stopPropagation();
                         setHabitMenu(habitMenu?.taskId === task.id ? null : { taskId: task.id, x: e.clientX, y: e.clientY });
                       }}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-primary transition-colors"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 p-3 text-on-surface-variant hover:text-primary transition-colors"
                     >
                       <span className="material-symbols-outlined text-[18px]">more_horiz</span>
                     </button>
@@ -402,9 +402,9 @@ export function DashboardPage() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 transition-opacity duration-300 ${toastExiting ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 pointer-events-none transition-opacity duration-300 ${toastExiting ? 'opacity-0' : 'opacity-100'}`}>
           <div
-            className={`rounded-2xl px-4 py-3 shadow-sheet flex items-center justify-between ${
+            className={`rounded-2xl px-4 py-3 shadow-sheet flex items-center justify-between pointer-events-auto ${
               toast.variant === 'success'
                 ? 'bg-primary text-on-primary'
                 : 'bg-error-container text-on-error-container'

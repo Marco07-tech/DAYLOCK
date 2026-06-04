@@ -14,9 +14,9 @@ const MEAL_LABELS: Record<MealSlot, string> = {
 }
 
 const MEAL_ICONS: Record<MealSlot, string> = {
-  breakfast: '🌅',
-  lunch: '☀️',
-  dinner: '🌙',
+  breakfast: 'wb_sunny',
+  lunch: 'light_mode',
+  dinner: 'nightlight',
 }
 
 const PRESET_OPTIONS = [
@@ -33,19 +33,19 @@ const SNACK_OPTIONS = [
 ]
 
 function getKcalColor(current: number, goal: number): string {
-  if (goal === 0) return 'text-text-secondary'
+  if (goal === 0) return 'text-on-surface-variant'
   const ratio = current / goal
-  if (ratio > 1) return 'text-status-danger'
-  if (ratio > 0.9) return 'text-yellow-400'
-  return 'text-accent-lime'
+  if (ratio > 1) return 'text-error'
+  if (ratio > 0.9) return 'text-status-warning'
+  return 'text-primary'
 }
 
 function getBarColor(current: number, goal: number): string {
-  if (goal === 0) return 'bg-bg-border'
+  if (goal === 0) return 'bg-outline-variant'
   const ratio = current / goal
-  if (ratio > 1) return 'bg-status-danger'
-  if (ratio > 0.9) return 'bg-yellow-400'
-  return 'bg-accent-lime'
+  if (ratio > 1) return 'bg-error'
+  if (ratio > 0.9) return 'bg-status-warning'
+  return 'bg-primary'
 }
 
 export function NutritionTab() {
@@ -161,7 +161,7 @@ export function NutritionTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-8 h-8 rounded-full border-2 border-bg-border border-t-accent-lime animate-spin" />
+         <div className="w-8 h-8 rounded-full border-2 border-outline-variant border-t-primary animate-spin" />
       </div>
     )
   }
@@ -169,15 +169,15 @@ export function NutritionTab() {
   // First-time setup
   if (!hasGoals) {
     return (
-      <div className="px-4 py-6 space-y-6">
+      <div className="px-container-padding py-6 space-y-6">
         <div className="text-center">
-          <h2 className="font-display text-xl text-white font-semibold">Set Up Nutrition</h2>
-          <p className="text-text-secondary text-sm mt-1">Let's calculate your daily goals</p>
+          <h2 className="font-headline-sm text-headline-sm text-on-surface">Set Up Nutrition</h2>
+          <p className="text-on-surface-variant text-sm mt-1">Let's calculate your daily goals</p>
         </div>
 
         {setupStep === 'weight' && (
-          <div className="bg-bg-card border border-bg-border rounded-2xl p-5 space-y-4">
-            <label className="block text-sm font-medium text-text-primary">
+          <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-5 space-y-4">
+            <label className="block text-sm font-medium text-on-surface">
               Your weight (kg)
             </label>
             <input
@@ -185,7 +185,7 @@ export function NutritionTab() {
               value={setupWeight}
               onChange={(e) => setSetupWeight(e.target.value)}
               placeholder="e.g. 75"
-              className="w-full bg-bg-primary border border-bg-border rounded-lg px-3 py-2 text-text-primary text-lg focus:outline-none focus:border-accent-lime transition-colors"
+              className="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-on-surface text-lg focus:outline-none focus:border-primary transition-colors"
             />
             <Button
               variant="primary"
@@ -199,8 +199,8 @@ export function NutritionTab() {
         )}
 
         {setupStep === 'goal' && (
-          <div className="bg-bg-card border border-bg-border rounded-2xl p-5 space-y-4">
-            <label className="block text-sm font-medium text-text-primary">
+          <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-5 space-y-4">
+            <label className="block text-sm font-medium text-on-surface">
               Your goal
             </label>
             <div className="flex gap-2">
@@ -211,11 +211,11 @@ export function NutritionTab() {
                   className={cn(
                     'flex-1 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-150',
                     setupGoal === g
-                      ? 'bg-accent-lime text-black'
-                      : 'bg-bg-primary border border-bg-border text-text-secondary hover:border-accent-lime'
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container border border-outline-variant text-on-surface-variant hover:border-primary'
                   )}
                 >
-                  {g === 'cut' ? 'Cut 🔥' : g === 'maintain' ? 'Maintain ⚖️' : 'Bulk 💪'}
+                  {g === 'cut' ? 'Cut' : g === 'maintain' ? 'Maintain' : 'Bulk'}
                 </button>
               ))}
             </div>
@@ -235,16 +235,16 @@ export function NutritionTab() {
   }
 
   return (
-    <div className="px-4 pb-6 space-y-5">
+    <div className="px-container-padding pb-6 space-y-5">
       {/* Calorie Progress Card */}
-      <div className="bg-bg-card border border-bg-border rounded-2xl p-4">
+      <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-4">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-text-primary text-sm font-medium">🔥 Calories</p>
+          <p className="text-on-surface text-sm font-medium"><span className="material-symbols-outlined text-[16px] text-primary mr-1">local_fire_department</span> Calories</p>
           <p className={cn('text-xs font-semibold', getKcalColor(totalKcal, kcalGoal))}>
             {totalKcal.toLocaleString()} / {kcalGoal.toLocaleString()} kcal
           </p>
         </div>
-        <div className="h-2 bg-bg-border rounded-full overflow-hidden">
+        <div className="h-2 bg-outline-variant rounded-full overflow-hidden">
           <div
             className={cn('h-full rounded-full transition-all duration-300', getBarColor(totalKcal, kcalGoal))}
             style={{ width: `${Math.min((totalKcal / kcalGoal) * 100, 100)}%` }}
@@ -253,14 +253,14 @@ export function NutritionTab() {
       </div>
 
       {/* Protein Progress Card */}
-      <div className="bg-bg-card border border-bg-border rounded-2xl p-4">
+      <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-4">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-text-primary text-sm font-medium">💪 Protein</p>
+          <p className="text-on-surface text-sm font-medium"><span className="material-symbols-outlined text-[16px] text-primary mr-1">fitness_center</span> Protein</p>
           <p className={cn('text-xs font-semibold', getKcalColor(totalProtein, proteinGoal))}>
             {totalProtein}g / {proteinGoal}g
           </p>
         </div>
-        <div className="h-2 bg-bg-border rounded-full overflow-hidden">
+        <div className="h-2 bg-outline-variant rounded-full overflow-hidden">
           <div
             className={cn('h-full rounded-full transition-all duration-300', getBarColor(totalProtein, proteinGoal))}
             style={{ width: `${Math.min((totalProtein / proteinGoal) * 100, 100)}%` }}
@@ -270,7 +270,7 @@ export function NutritionTab() {
 
       {/* Meal Slots */}
       <div className="space-y-2">
-        <p className="text-text-primary text-sm font-medium">Meals</p>
+        <p className="text-on-surface text-sm font-medium">Meals</p>
         {(['breakfast', 'lunch', 'dinner'] as MealSlot[]).map((meal) => {
           const kcalKey = meal === 'breakfast' ? 'breakfastKcal' : meal === 'lunch' ? 'lunchKcal' : 'dinnerKcal'
           const proteinKey = meal === 'breakfast' ? 'breakfastProtein' : meal === 'lunch' ? 'lunchProtein' : 'dinnerProtein'
@@ -281,21 +281,21 @@ export function NutritionTab() {
             <button
               key={meal}
               onClick={() => setSelectedMeal(meal)}
-              className="w-full bg-bg-card border border-bg-border rounded-xl px-4 py-3 text-left hover:border-accent-lime transition-colors flex items-center justify-between"
+              className="w-full bg-surface-container-low border border-outline-variant rounded-xl px-4 py-3 text-left hover:border-primary transition-colors flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
-                <span className="text-lg">{MEAL_ICONS[meal]}</span>
+                <span className="material-symbols-outlined text-[20px] text-primary">{MEAL_ICONS[meal]}</span>
                 <div>
-                  <p className="text-text-primary text-sm font-medium">{MEAL_LABELS[meal]}</p>
+                  <p className="text-on-surface text-sm font-medium">{MEAL_LABELS[meal]}</p>
                   {kcal > 0 && (
-                    <p className="text-text-muted text-xs">{kcal} kcal · {protein}g protein</p>
+                    <p className="text-on-surface-variant text-xs">{kcal} kcal · {protein}g protein</p>
                   )}
                 </div>
               </div>
               {kcal > 0 ? (
-                <span className="text-accent-lime text-xs font-semibold">{kcal} kcal</span>
+                <span className="text-primary text-xs font-semibold">{kcal} kcal</span>
               ) : (
-                <span className="text-text-muted text-xs">Tap to add</span>
+                <span className="text-on-surface-variant text-xs">Tap to add</span>
               )}
             </button>
           )
@@ -304,7 +304,7 @@ export function NutritionTab() {
 
       {/* Snack Quick Add */}
       <div>
-        <p className="text-text-primary text-sm font-medium mb-2">Snacks</p>
+        <p className="text-on-surface text-sm font-medium mb-2">Snacks</p>
         <div className="flex gap-2">
           {SNACK_OPTIONS.map((opt) => (
             <button
@@ -312,7 +312,7 @@ export function NutritionTab() {
               onClick={() => {
                 if (user) addSnack(opt.kcal, opt.protein, user.id)
               }}
-              className="flex-1 px-3 py-2 rounded-xl bg-bg-card border border-bg-border text-text-primary text-xs font-medium hover:border-accent-lime transition-colors"
+              className="flex-1 px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant text-on-surface text-xs font-medium hover:border-primary transition-colors"
             >
               {opt.label} kcal
             </button>
@@ -321,10 +321,10 @@ export function NutritionTab() {
       </div>
 
       {/* Water Tracker */}
-      <div className="bg-bg-card border border-bg-border rounded-2xl p-4">
+      <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-text-primary text-sm font-medium">💧 Water</p>
-          <p className="text-text-secondary text-xs">{waterGlasses * 250}ml / {waterGoal * 250}ml</p>
+          <p className="text-on-surface text-sm font-medium"><span className="material-symbols-outlined text-[16px] text-primary mr-1">water_drop</span> Water</p>
+          <p className="text-on-surface-variant text-xs">{waterGlasses * 250}ml / {waterGoal * 250}ml</p>
         </div>
         <div className="flex gap-1.5 justify-center">
           {Array.from({ length: waterGoal }, (_, i) => {
@@ -344,10 +344,10 @@ export function NutritionTab() {
                   'w-8 h-8 rounded-full text-xs flex items-center justify-center transition-all duration-150',
                   filled
                     ? 'bg-blue-500 text-white'
-                    : 'bg-bg-primary border border-bg-border text-text-muted'
+                    : 'bg-surface-container border border-outline-variant text-on-surface-variant'
                 )}
               >
-                {filled ? '💧' : '🫗'}
+                <span className="material-symbols-outlined text-[16px]">{filled ? 'water_drop' : 'water_drop'}</span>
               </button>
             )
           })}
@@ -358,19 +358,18 @@ export function NutritionTab() {
       {selectedMeal && (
         <>
           <div
-            className="fixed inset-0 bg-black z-40"
-            style={{ opacity: 0.7 }}
+            className="fixed inset-0 bg-[rgba(26,26,26,0.4)] backdrop-blur-[4px] z-40"
             onClick={() => setSelectedMeal(null)}
           />
           <div
             ref={bottomSheetRef}
-            className="fixed bottom-0 left-0 right-0 bg-bg-secondary border-t border-bg-border rounded-t-3xl z-50 p-4 space-y-3"
+            className="fixed bottom-0 left-0 right-0 bg-surface-container-low border-t border-outline-variant rounded-t-3xl z-50 p-4 space-y-3"
           >
             <div className="flex justify-center pb-2">
-              <div className="w-9 h-1 bg-bg-border rounded-full" />
+              <div className="w-9 h-1 bg-outline-variant rounded-full" />
             </div>
-            <h3 className="text-text-primary font-semibold text-base text-center">
-              {MEAL_ICONS[selectedMeal]} {MEAL_LABELS[selectedMeal]}
+            <h3 className="text-on-surface font-semibold text-base text-center">
+              <span className="material-symbols-outlined text-[20px] text-primary">{MEAL_ICONS[selectedMeal]}</span> {MEAL_LABELS[selectedMeal]}
             </h3>
 
             <div className="grid grid-cols-2 gap-2">
@@ -381,16 +380,16 @@ export function NutritionTab() {
                   className={cn(
                     'px-3 py-3 rounded-xl text-sm font-medium transition-all duration-150',
                     opt.label === 'Custom'
-                      ? 'bg-bg-card border border-dashed border-bg-border text-text-secondary'
-                      : 'bg-bg-card border border-bg-border text-text-primary hover:border-accent-lime'
+                      ? 'bg-surface-container-low border border-dashed border-outline-variant text-on-surface-variant'
+                      : 'bg-surface-container-low border border-outline-variant text-on-surface hover:border-primary'
                   )}
                 >
                   {opt.label === 'Custom' ? (
-                    '✏️ Custom'
+                    <><span className="material-symbols-outlined text-[16px]">edit</span> Custom</>
                   ) : (
                     <>
                       <div>{opt.label}</div>
-                      <div className="text-text-muted text-xs mt-0.5">{opt.kcal} kcal · {opt.protein}g</div>
+                      <div className="text-on-surface-variant text-xs mt-0.5">{opt.kcal} kcal · {opt.protein}g</div>
                     </>
                   )}
                 </button>
@@ -398,7 +397,7 @@ export function NutritionTab() {
             </div>
 
             {PRESET_OPTIONS.find((o) => o.label === 'Custom') && (
-              <div className="space-y-2 pt-2 border-t border-bg-border">
+              <div className="space-y-2 pt-2 border-t border-outline-variant">
                 <div className="flex gap-2">
                   <input
                     ref={customKcalRef}
@@ -406,14 +405,14 @@ export function NutritionTab() {
                     value={customKcal}
                     onChange={(e) => setCustomKcal(e.target.value)}
                     placeholder="Calories"
-                    className="flex-1 bg-bg-primary border border-bg-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-lime transition-colors"
+                    className="flex-1 bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-on-surface text-sm focus:outline-none focus:border-primary transition-colors"
                   />
                   <input
                     type="number"
                     value={customProtein}
                     onChange={(e) => setCustomProtein(e.target.value)}
                     placeholder="Protein (g)"
-                    className="flex-1 bg-bg-primary border border-bg-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent-lime transition-colors"
+                    className="flex-1 bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-on-surface text-sm focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
                 <Button
