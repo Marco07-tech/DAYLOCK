@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+
 import type { Task } from '../../../types'
 import { TYPE_ICONS, TYPE_NAMES } from '../../../constants/taskTypes'
 import { useAuthStore } from '../../../store/useAuthStore'
@@ -255,7 +255,7 @@ export function EditTaskModal({ open, task, onClose, onToast }: EditTaskModalPro
             onClick={handleClose}
             className="text-text-secondary hover:text-text-primary transition-colors p-1"
           >
-            <X size={20} />
+            <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 

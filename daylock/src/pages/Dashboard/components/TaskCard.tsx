@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Task } from '../../../types/index'
 import { useTaskStore } from '../../../store/useTaskStore'
@@ -128,7 +127,7 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
           )}
           disabled={toggling}
         >
-          {isDone && <Check size={16} className="text-black" />}
+          {isDone && <span className="material-symbols-outlined text-[16px] text-black">check</span>}
         </button>
 
         {/* Task Info */}
@@ -174,7 +173,7 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
           className="absolute right-2 top-2 h-8 w-8 rounded-full border border-bg-border bg-bg-primary text-text-secondary flex items-center justify-center active:scale-95 transition-colors hover:border-accent-lime hover:text-white"
           aria-label="Habit menu"
         >
-          <MoreVertical size={16} />
+          <span className="material-symbols-outlined text-[16px]">more_horiz</span>
         </button>
 
         {menuOpen && (
@@ -192,18 +191,17 @@ export function TaskCard({ task, onToast }: TaskCardProps) {
                 }}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-white transition-colors hover:bg-bg-card"
               >
-                <Pencil size={14} className="text-text-secondary" />
+                <span className="material-symbols-outlined text-[14px] text-text-secondary">edit</span>
                 Edit Habit
               </button>
               <button
-                type="button"
                 onClick={() => {
                   setMenuOpen(false)
                   setShowDeleteConfirm(true)
                 }}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-status-danger transition-colors hover:bg-[rgba(239,68,68,0.1)]"
               >
-                <Trash2 size={14} className="text-status-danger" />
+                <span className="material-symbols-outlined text-[14px] text-status-danger">delete</span>
                 Delete Habit
               </button>
             </div>

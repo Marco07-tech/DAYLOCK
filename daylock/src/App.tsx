@@ -19,7 +19,7 @@ import { DashboardPage } from './pages/Dashboard/DashboardPage'
 import { GymPage } from './pages/Gym/GymPage'
 import { StatsPage } from './pages/Stats/StatsPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
-import './App.css'
+/* removed App.css — now using index.css + Tailwind */
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -27,10 +27,10 @@ interface ProtectedRouteProps {
 
 function AuthLoadingScreen() {
   return (
-    <div className="w-full h-screen bg-[#0B0F0A] flex items-center justify-center">
+    <div className="w-full h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="h-12 w-12 rounded-full border-4 border-[#1F2A19] border-t-[#A3E635] animate-spin" />
-        <p className="text-sm text-[#94A37A]">Loading session...</p>
+        <div className="h-12 w-12 rounded-full border-4 border-surface-variant border-t-primary animate-spin" />
+        <p className="text-sm text-on-surface-variant">Loading session...</p>
       </div>
     </div>
   )

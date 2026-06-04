@@ -1,13 +1,9 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
 import type { TaskType, Task } from '../../types'
 import { TYPE_ICONS, TYPE_NAMES } from '../../constants/taskTypes'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useTaskStore } from '../../store/useTaskStore'
 import { useGymStore } from '../../store/useGymStore'
-import { cn } from '../../lib/utils'
-import { Button } from '../../components/ui/Button'
-import { TaskTypePicker } from './components/TaskTypePicker'
 import { GymQuestions } from './components/GymQuestions'
 import { StudyQuestions } from './components/StudyQuestions'
 import { WaterQuestions } from './components/WaterQuestions'
@@ -20,6 +16,15 @@ interface AddTaskSheetProps {
   onClose: () => void
 }
 
+const TYPE_LIST: { type: TaskType; icon: string }[] = [
+  { type: 'sleep', icon: 'bedtime' },
+  { type: 'water', icon: 'water_drop' },
+  { type: 'gym', icon: 'fitness_center' },
+  { type: 'study', icon: 'menu_book' },
+  { type: 'custom', icon: 'star' },
+]
+
+
 export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [selectedType, setSelectedType] = useState<TaskType | null>(null)
@@ -31,7 +36,6 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
 
   const handleClose = () => {
     onClose()
-    // Reset state after animation
     setTimeout(() => {
       setStep(1)
       setSelectedType(null)
@@ -42,7 +46,6 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
   const handleAddTask = async () => {
     if (!selectedType || !user) return
 
-    // Build task name
     let taskName = TYPE_NAMES[selectedType]
     if (selectedType === 'study' && formData.subject) {
       taskName = `Study — ${formData.subject}`
@@ -56,7 +59,6 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
       taskName = formData.name
     }
 
-    // Build meta object
     const meta: Record<string, unknown> = {}
     if (formData.time) meta.time = formData.time
     if (formData.goal) meta.goal = formData.goal
@@ -65,10 +67,8 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
     if (formData.bedtime) meta.bedtime = formData.bedtime
     if (formData.wakeTime) meta.wakeTime = formData.wakeTime
 
-    // Build scheduled days (default to all 7 days if not specified)
     let scheduledDays = formData.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
-    // Create task object (without id - Supabase will generate it)
     const newTask: Omit<Task, 'id' | 'streak' | 'done'> = {
       type: selectedType,
       name: taskName,
@@ -78,134 +78,103 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
       scheduledTime: formData.time || formData.bedtime || '',
     }
 
-    // Add task to store
     await addTask(newTask, user.id)
 
-    // If gym task, initialize today's workout
     if (selectedType === 'gym') {
       await initTodayWorkout(user.id)
     }
 
     handleClose()
   }
-  
 
-  if (!open) return null;
+  if (!open) return null
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 bg-black z-40 transition-opacity duration-350"
-        style={{ opacity: open ? 0.7 : 0 }}
-        onClick={handleClose}
-      />
+      <div className="fixed inset-0 bg-[rgba(26,26,26,0.4)] backdrop-blur-[4px] z-50 flex items-end" onClick={handleClose}>
+        <div
+          className="w-full bg-background rounded-t-[32px] px-container-padding pt-6 pb-8 shadow-sheet max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Drag handle */}
+          <div className="flex justify-center mb-stack-gap-lg">
+            <div className="w-12 h-1.5 bg-surface-variant rounded-full" />
+          </div>
 
-      {/* Sheet */}
-      <div
-        className="fixed bottom-0 left-0 right-0 bg-bg-secondary border-t border-bg-border rounded-t-3xl z-50 flex flex-col max-h-[85vh] overflow-y-auto transition-transform duration-350 ease-out"
-        style={{
-          transform: open ? 'translateY(0)' : 'translateY(100%)',
-        }}
-      >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-9 h-1 bg-bg-border rounded-full" />
-        </div>
+          {/* Header */}
+          <h2 className="font-headline-sm text-headline-sm text-on-surface text-center mb-2">New Habit</h2>
+          <p className="font-label-md text-label-md text-on-surface-variant text-center mb-stack-gap-lg">
+            {step === 1 ? 'What will you focus on today?' :
+             step === 2 ? 'Tell us more' :
+             'Confirm your habit'}
+          </p>
 
-        {/* Header */}
-        <div className="flex justify-between items-center px-4 py-3 border-b border-bg-border">
-          <h2 className="text-text-primary font-semibold text-base">
-            {step === 1 && 'What do you want to track?'}
-            {step === 2 && 'Tell us more'}
-            {step === 3 && 'Confirm habit'}
-          </h2>
-          <button
-            onClick={handleClose}
-            className="text-text-secondary hover:text-text-primary transition-colors p-1"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Step indicator dots */}
-        <div className="flex justify-center gap-1 py-4">
-          {[1, 2, 3].map((s) => (
-            <div
-              key={s}
-              className={cn(
-                'h-1 rounded-full transition-all duration-200',
-                s <= step
-                  ? 'bg-accent-lime'
-                  : 'bg-bg-border'
-              )}
-              style={{
-                width: s === step ? '20px' : '6px',
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 px-4 pb-6">
-          {/* Step 1: Task Type Picker */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <TaskTypePicker
-                selectedType={selectedType}
-                onSelect={(type: TaskType) => setSelectedType(type)}
+          {/* Step dots */}
+          <div className="flex justify-center gap-2 mb-stack-gap-lg">
+            {[1, 2, 3].map((s) => (
+              <div
+                key={s}
+                className={`h-1.5 rounded-full transition-all duration-200 ${
+                  s <= step ? 'bg-primary' : 'bg-outline-variant'
+                }`}
+                style={{ width: s === step ? '24px' : '6px' }}
               />
-              <Button
-                variant="primary"
-                className="w-full"
+            ))}
+          </div>
+
+          {/* Step 1: Type Picker */}
+          {step === 1 && (
+            <div className="space-y-stack-gap-lg">
+              <div className="flex justify-between px-2">
+                {TYPE_LIST.map(({ type, icon }) => (
+                  <div key={type} className="flex flex-col items-center gap-2 cursor-pointer" onClick={() => setSelectedType(type)}>
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                      selectedType === type
+                        ? 'bg-primary text-on-primary shadow-md scale-110'
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-primary hover:text-on-primary'
+                    }`}>
+                      <span className="material-symbols-outlined text-[24px]">{icon}</span>
+                    </div>
+                    <span className={`font-label-sm text-label-sm ${selectedType === type ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
+                      {TYPE_NAMES[type]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => { setStep(2); }}
                 disabled={!selectedType}
-                onClick={() => setStep(2)}
+                className="w-full py-5 bg-primary text-on-primary rounded-full font-label-md text-[16px] hover:opacity-90 active:scale-[0.98] transition-all shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Next →
-              </Button>
+              </button>
             </div>
           )}
 
           {/* Step 2: Questions */}
           {step === 2 && selectedType && (
             <div className="space-y-6">
-              {selectedType === 'gym' && (
-                <GymQuestions formData={formData} setFormData={setFormData} />
-              )}
-              {selectedType === 'study' && (
-                <StudyQuestions formData={formData} setFormData={setFormData} />
-              )}
-              {selectedType === 'water' && (
-                <WaterQuestions formData={formData} setFormData={setFormData} />
-              )}
-              {selectedType === 'sleep' && (
-                <SleepQuestions formData={formData} setFormData={setFormData} />
-              )}
-              {selectedType === 'cardio' && (
-                <GymQuestions formData={formData} setFormData={setFormData} />
-              )}
-              {selectedType === 'steps' && (
-                <StepsQuestions formData={formData} setFormData={setFormData} />
-              )}
-              {selectedType === 'custom' && (
-                <CustomQuestions formData={formData} setFormData={setFormData} />
-              )}
+              {selectedType === 'gym' && <GymQuestions formData={formData} setFormData={setFormData} />}
+              {selectedType === 'study' && <StudyQuestions formData={formData} setFormData={setFormData} />}
+              {selectedType === 'water' && <WaterQuestions formData={formData} setFormData={setFormData} />}
+              {selectedType === 'sleep' && <SleepQuestions formData={formData} setFormData={setFormData} />}
+              {selectedType === 'cardio' && <GymQuestions formData={formData} setFormData={setFormData} />}
+              {selectedType === 'steps' && <StepsQuestions formData={formData} setFormData={setFormData} />}
+              {selectedType === 'custom' && <CustomQuestions formData={formData} setFormData={setFormData} />}
 
-              <div className="flex gap-2 pt-4">
-                <Button
-                  variant="secondary"
-                  className="w-full"
+              <div className="flex gap-3 pt-4">
+                <button
                   onClick={() => setStep(1)}
+                  className="flex-1 py-4 rounded-full border border-outline-variant text-on-surface font-label-md hover:bg-surface-container transition-colors"
                 >
                   ← Back
-                </Button>
-                <Button
-                  variant="primary"
-                  className="w-full"
+                </button>
+                <button
                   onClick={() => setStep(3)}
+                  className="flex-1 py-4 rounded-full bg-primary text-on-primary font-label-md hover:opacity-90 active:scale-[0.98] transition-all"
                 >
                   Next →
-                </Button>
+                </button>
               </div>
             </div>
           )}
@@ -213,14 +182,11 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
           {/* Step 3: Confirm */}
           {step === 3 && selectedType && (
             <div className="space-y-6">
-              {/* Summary card */}
-              <div className="bg-bg-card border border-accent-lime border-opacity-20 rounded-2xl p-5 text-center">
+              <div className="bg-surface-container-low rounded-xl p-6 card-shadow text-center">
                 <div className="flex justify-center mb-3">
                   {TYPE_ICONS[selectedType]}
                 </div>
-
-                {/* Task name */}
-                <h3 className="text-text-primary font-semibold text-base">
+                <h3 className="font-headline-sm text-headline-sm text-on-surface">
                   {selectedType === 'study' && formData.subject
                     ? `Study — ${formData.subject}`
                     : selectedType === 'water' && formData.target
@@ -231,102 +197,53 @@ export function AddTaskSheet({ open, onClose }: AddTaskSheetProps) {
                     ? formData.name
                     : TYPE_NAMES[selectedType]}
                 </h3>
-
-                {/* Meta info */}
-                <div className="mt-3 space-y-1">
+                <div className="mt-4 space-y-1 font-label-sm text-label-sm text-on-surface-variant">
                   {selectedType === 'gym' && formData.days?.length && (
-                    <>
-                      <p className="text-text-secondary text-sm">
-                        {(formData.days as string[]).join(', ')}
-                      </p>
-                      {formData.time && (
-                        <p className="text-text-secondary text-sm">{formData.time}</p>
-                      )}
-                      {formData.goal && (
-                        <div className="flex justify-center mt-2">
-                          <span className="text-accent-lime text-xs font-medium bg-accent-lime-muted px-2 py-1 rounded">
-                            {formData.goal}
-                          </span>
-                        </div>
-                      )}
-                    </>
+                    <p>{(formData.days as string[]).join(', ')}</p>
                   )}
-                  {selectedType === 'study' && (
-                    <>
-                      {formData.duration && (
-                        <p className="text-text-secondary text-sm">{formData.duration}/day</p>
-                      )}
-                      {formData.time && (
-                        <p className="text-text-secondary text-sm">{formData.time}</p>
-                      )}
-                    </>
+                  {selectedType === 'steps' && formData.days?.length && (
+                    <p>{(formData.days as string[]).join(', ')}</p>
+                  )}
+                  {selectedType === 'study' && formData.duration && (
+                    <p>{formData.duration}/day</p>
                   )}
                   {selectedType === 'water' && formData.target && (
-                    <p className="text-text-secondary text-sm">Daily: {formData.target}</p>
+                    <p>Daily: {formData.target}</p>
                   )}
                   {selectedType === 'sleep' && (
-                    <>
-                      <p className="text-text-secondary text-sm">
-                        {formData.bedtime} → {formData.wakeTime}
-                      </p>
-                    </>
+                    <p>{formData.bedtime} → {formData.wakeTime}</p>
                   )}
-                  {selectedType === 'cardio' && (
-                    <>
-                      {formData.days?.length && (
-                        <p className="text-text-secondary text-sm">
-                          {(formData.days as string[]).join(', ')}
-                        </p>
-                      )}
-                      {formData.time && (
-                        <p className="text-text-secondary text-sm">{formData.time}</p>
-                      )}
-                    </>
-                  )}
-                  {selectedType === 'steps' && (
-                    <>
-                      {formData.days?.length && (
-                        <p className="text-text-secondary text-sm">
-                          {(formData.days as string[]).join(', ')}
-                        </p>
-                      )}
-                    </>
-                  )}
-                  {selectedType === 'custom' && (
-                    <>
-                      {formData.days?.length && (
-                        <p className="text-text-secondary text-sm">
-                          {(formData.days as string[]).join(', ')}
-                        </p>
-                      )}
-                      {formData.time && (
-                        <p className="text-text-secondary text-sm">{formData.time}</p>
-                      )}
-                    </>
+                  {formData.time && (
+                    <p>at {formData.time}</p>
                   )}
                 </div>
               </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  className="w-full"
+              <div className="flex gap-3">
+                <button
                   onClick={() => setStep(2)}
+                  className="flex-1 py-4 rounded-full border border-outline-variant text-on-surface font-label-md hover:bg-surface-container transition-colors"
                 >
                   ← Edit
-                </Button>
-                <Button
-                  variant="primary"
-                  className="w-full"
+                </button>
+                <button
                   onClick={handleAddTask}
+                  className="flex-1 py-4 rounded-full bg-primary text-on-primary font-label-md hover:opacity-90 active:scale-[0.98] transition-all shadow-lg"
                 >
                   Add to Routine ✓
-                </Button>
+                </button>
               </div>
             </div>
           )}
+
+          {/* Cancel */}
+          <button
+            onClick={handleClose}
+            className="w-full py-4 text-on-surface-variant font-label-md hover:text-primary transition-colors mt-4"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </>
-  );
+  )
 }

@@ -11,13 +11,13 @@ export function AppShell({ children }: AppShellProps) {
         maxWidth: '430px',
         margin: '0 auto',
         minHeight: '100vh',
-        background: '#0A0A0F',
+        background: '#fcf9f8',
         position: 'relative',
         overflow: 'hidden',
       }}
       className="flex flex-col"
     >
-      <div className="flex-1 pb-20">
+      <div className="flex-1 pb-24">
         {children}
       </div>
       <BottomNav />

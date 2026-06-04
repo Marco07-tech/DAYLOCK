@@ -1,14 +1,17 @@
-import { Dumbbell, BookOpen, Droplet, Moon, Activity, Footprints, Star } from 'lucide-react'
 import type { TaskType } from '../types'
 
+const icon = (name: string) => (
+  <span className="material-symbols-outlined text-primary text-[32px]">{name}</span>
+)
+
 export const TYPE_ICONS: Record<TaskType, React.ReactNode> = {
-  gym: <Dumbbell size={32} className="text-accent-lime" />,
-  study: <BookOpen size={32} className="text-accent-lime" />,
-  water: <Droplet size={32} className="text-accent-lime" />,
-  sleep: <Moon size={32} className="text-accent-lime" />,
-  cardio: <Activity size={32} className="text-accent-lime" />,
-  steps: <Footprints size={32} className="text-accent-lime" />,
-  custom: <Star size={32} className="text-accent-lime" />,
+  gym: icon('fitness_center'),
+  study: icon('menu_book'),
+  water: icon('water_drop'),
+  sleep: icon('bedtime'),
+  cardio: icon('directions_run'),
+  steps: icon('directions_walk'),
+  custom: icon('star'),
 }
 
 export const TYPE_NAMES: Record<TaskType, string> = {

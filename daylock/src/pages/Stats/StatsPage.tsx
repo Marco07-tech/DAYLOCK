@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { cn } from '../../lib/utils';
@@ -25,9 +24,9 @@ export function StatsPage() {
 
   if (tasks.length === 0) {
     return (
-      <div className="min-h-screen bg-bg-primary pb-20 page-enter flex flex-col items-center justify-center px-4">
-        <BarChart3 size={48} className="text-text-muted mb-4 opacity-50" />
-        <h2 className="text-text-primary font-semibold text-lg font-display mb-2">No data yet</h2>
+      <div className="min-h-screen bg-background pb-20 page-enter flex flex-col items-center justify-center px-4">
+        <span className="material-symbols-outlined text-[48px] text-text-muted mb-4 opacity-50">bar_chart</span>
+        <h2 className="text-text-primary font-semibold text-lg mb-2">No data yet</h2>
         <p className="text-text-secondary text-sm text-center mb-6 max-w-xs">
           Track habits daily to unlock your stats, streaks, and activity heatmap.
         </p>
@@ -62,29 +61,29 @@ export function StatsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-bg-primary pb-20 page-enter">
-      <div className="px-4 py-5">
-        <h1 className="text-text-primary text-2xl font-semibold font-display mb-5">Statistics</h1>
+    <div className="min-h-screen bg-background pb-20 page-enter">
+      <div className="px-4 py-5 max-w-md mx-auto">
+        <h1 className="text-text-primary text-2xl font-semibold mb-5">Statistics</h1>
 
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => setWeekOffset(weekOffset - 1)}
             className="w-8 h-8 rounded-full bg-bg-card border border-bg-border text-text-primary hover:border-accent-lime transition-all flex items-center justify-center"
           >
-            <ChevronLeft size={18} />
+            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
           </button>
-          <p className="text-text-primary text-sm font-medium font-display">{weekRange}</p>
+          <p className="text-text-primary text-sm font-medium">{weekRange}</p>
           <button
             onClick={() => setWeekOffset(weekOffset + 1)}
             disabled={weekOffset === 0}
             className={cn(
-              'w-8 h-8 rounded-full border text-text-primary transition-all flex items-center justify-center font-display',
+              'w-8 h-8 rounded-full border text-text-primary transition-all flex items-center justify-center',
               weekOffset === 0
                 ? 'bg-bg-border border-bg-border opacity-50 cursor-not-allowed'
                 : 'bg-bg-card border-bg-border hover:border-accent-lime'
             )}
           >
-            <ChevronRight size={18} />
+            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
           </button>
         </div>
 

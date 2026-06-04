@@ -4,17 +4,16 @@
 
 @layer base {
   html {
-    @apply bg-primary text-primary font-sans;
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-primary text-primary;
+    background-color: #fcf9f8;
+    color: #1c1b1b;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Remove default input number arrows */
   input[type='number']::-webkit-outer-spin-button,
   input[type='number']::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -25,38 +24,35 @@
     -moz-appearance: textfield;
   }
 
-  /* Focus styles */
   input:focus,
   select:focus {
     outline: none;
   }
 
-  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0A0A0A;
+    background: #fcf9f8;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #262626;
+    background: #c4c8c0;
     border-radius: 10px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #abd600;
-  }
-
-  /* Material Symbols baseline */
-  .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   }
 }
 
-/* Page transitions */
+@layer components {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .card-shadow {
+    box-shadow: 0 10px 40px -10px rgba(26, 26, 26, 0.05);
+  }
+}
+
 @keyframes fadeSlideUp {
   from {
     opacity: 0;

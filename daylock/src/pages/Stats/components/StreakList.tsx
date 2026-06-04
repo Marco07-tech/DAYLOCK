@@ -1,16 +1,15 @@
-import { Dumbbell, BookOpen, Droplet, Moon, Activity, Footprints, Star } from 'lucide-react';
 import { useTaskStore } from '../../../store/useTaskStore';
 import type { TaskType } from '../../../types';
 import { cn } from '../../../lib/utils';
 
-const TASK_ICONS: Record<TaskType, React.ReactNode> = {
-  gym: <Dumbbell size={18} className="text-accent-lime" />,
-  study: <BookOpen size={18} className="text-accent-lime" />,
-  water: <Droplet size={18} className="text-accent-lime" />,
-  sleep: <Moon size={18} className="text-accent-lime" />,
-  cardio: <Activity size={18} className="text-accent-lime" />,
-  steps: <Footprints size={18} className="text-accent-lime" />,
-  custom: <Star size={18} className="text-accent-lime" />,
+const TASK_ICONS: Record<TaskType, string> = {
+  gym: 'fitness_center',
+  study: 'menu_book',
+  water: 'water_drop',
+  sleep: 'bedtime',
+  cardio: 'directions_run',
+  steps: 'directions_walk',
+  custom: 'star',
 };
 
 export function StreakList() {
@@ -35,9 +34,9 @@ export function StreakList() {
           const streak = streaks[task.id] || 0;
           const fillPercent = Math.min((streak / 30) * 100, 100);
 
-          let barColor = '#EF4444';
-          if (streak >= 7) barColor = '#A8FF3E';
-          else if (streak >= 3) barColor = '#F59E0B';
+          let barColor = '#ba1a1a';
+          if (streak >= 7) barColor = '#516051';
+          else if (streak >= 3) barColor = '#747872';
 
           return (
             <div key={task.id}>
@@ -48,7 +47,7 @@ export function StreakList() {
                 )}
               >
                 <div className="flex items-center gap-2.5">
-                  {TASK_ICONS[task.type]}
+                  <span className="material-symbols-outlined text-accent-lime text-[18px]">{TASK_ICONS[task.type]}</span>
                   <span className="text-text-primary text-xs">{task.name}</span>
                 </div>
                 <span

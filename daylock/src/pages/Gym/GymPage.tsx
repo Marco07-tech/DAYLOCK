@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Apple } from 'lucide-react'
+
 import { useAuthStore } from '../../store/useAuthStore'
 import { useGymStore } from '../../store/useGymStore'
 import { useTaskStore } from '../../store/useTaskStore'
@@ -108,7 +108,7 @@ export function GymPage() {
             )}
           >
             <div className="flex items-center justify-center gap-1.5">
-              <Apple size={16} />
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>egg_alt</span>
               Nutrition
             </div>
           </button>

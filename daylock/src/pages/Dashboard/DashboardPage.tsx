@@ -1,15 +1,28 @@
 import { useEffect, useState, useRef } from 'react'
-import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/useAuthStore';
 import { useTaskStore } from '../../store/useTaskStore';
+import { useNutritionStore } from '../../store/useNutritionStore';
 import { useGymStore } from '../../store/useGymStore';
-import { getGreeting, formatDate } from '../../lib/utils';
-import { ProgressBar } from '../../components/ui/ProgressBar';
-import { BlockerBanner } from './components/BlockerBanner';
-import { StatsRow } from './components/StatsRow';
-import { TaskList } from './components/TaskList';
+import { supabase } from '../../lib/supabase';
+import { formatDate } from '../../lib/utils';
 import { AddTaskSheet } from '../AddTask/AddTaskSheet';
-import { NutritionSummaryCard } from './components/NutritionSummaryCard';
+import { EditTaskModal } from './components/EditTaskModal';
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getBarColor(current: number, goal: number): string {
+  if (goal === 0) return 'bg-surface-variant'
+  const ratio = current / goal
+  if (ratio > 1) return 'bg-error'
+  if (ratio > 0.9) return 'bg-yellow-500'
+  return 'bg-primary'
+}
 
 type ToastType = {
   message: string;
@@ -18,132 +31,394 @@ type ToastType = {
   actionLabel?: string;
 };
 
-export function DashboardPage() {
-  const [showAddTask, setShowAddTask] = useState(false)
-  const [toast, setToast] = useState<ToastType | null>(null)
-  const [toastExiting, setToastExiting] = useState(false)
-  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const user = useAuthStore((state) => state.user)
-  const getTodayTasks = useTaskStore((state) => state.getTodayTasks)
-  const getCompletionPercent = useTaskStore((state) => state.getCompletionPercent)
-  const todayLog = useTaskStore((state) => state.todayLog)
-  const initTodayWorkout = useGymStore((state) => state.initTodayWorkout)
+type HabitMenuState = {
+  taskId: string;
+  x: number;
+  y: number;
+} | null;
 
-  // Cleanup timers on unmount
+export function DashboardPage() {
+  const navigate = useNavigate();
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [toast, setToast] = useState<ToastType | null>(null);
+  const [toastExiting, setToastExiting] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [habitMenu, setHabitMenu] = useState<HabitMenuState>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const user = useAuthStore((state) => state.user);
+  const getTodayTasks = useTaskStore((state) => state.getTodayTasks);
+  const todayLog = useTaskStore((state) => state.todayLog);
+  const toggleTaskDone = useTaskStore((state) => state.toggleTaskDone);
+  const removeTask = useTaskStore((state) => state.removeTask);
+  const streaks = useTaskStore((state) => state.streaks);
+  const initTodayWorkout = useGymStore((state) => state.initTodayWorkout);
+  const todayNutritionLog = useNutritionStore((state) => state.todayLog);
+  const getTotalKcal = useNutritionStore((state) => state.getTotalKcal);
+  const getTotalProtein = useNutritionStore((state) => state.getTotalProtein);
+
+  useEffect(() => {
+    if (!user) return;
+    const todayTasks = getTodayTasks();
+    const hasGymTask = todayTasks.some((t) => t.type === 'gym');
+    if (hasGymTask) {
+      initTodayWorkout(user.id);
+    }
+  }, [user, getTodayTasks, initTodayWorkout]);
+
   useEffect(() => {
     return () => {
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
-    }
-  }, [])
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    };
+  }, []);
 
   const dismissToast = (immediate = false) => {
-    if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
     if (immediate) {
-      setToastExiting(false)
-      setToast(null)
-      return
+      setToastExiting(false);
+      setToast(null);
+      return;
     }
-    setToastExiting(true)
+    setToastExiting(true);
     exitTimerRef.current = setTimeout(() => {
-      setToastExiting(false)
-      setToast(null)
-    }, 300)
-  }
+      setToastExiting(false);
+      setToast(null);
+    }, 300);
+  };
 
   const handleToast = (
-    message: string, 
+    message: string,
     variant: 'success' | 'error' = 'success',
     action?: () => void,
     actionLabel?: string
   ) => {
-    // Clear any existing undo timer
-    if (undoTimerRef.current) {
-      clearTimeout(undoTimerRef.current)
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setToast({ message, variant, action, actionLabel });
+    setToastExiting(false);
+    const duration = action ? 3000 : 2200;
+    undoTimerRef.current = window.setTimeout(() => dismissToast(), duration);
+  };
+
+  const todayTasks = getTodayTasks();
+  const completedCount = todayTasks.filter((t) => todayLog[t.id]).length;
+  const totalCount = todayTasks.length;
+  const totalKcal = getTotalKcal();
+  const totalProtein = getTotalProtein();
+  const kcalGoal = todayNutritionLog?.caloriesGoal ?? 0;
+  const proteinGoal = todayNutritionLog?.proteinGoal ?? 0;
+  const waterGlasses = todayNutritionLog?.waterGlasses ?? 0;
+  const waterGoal = todayNutritionLog?.waterGoal ?? 8;
+
+  const gymTask = todayTasks.find((t) => t.type === 'gym');
+
+  const handleToggle = async (taskId: string, isDone: boolean, streak: number) => {
+    if (!user) return;
+    const isCompletion = !isDone;
+    try {
+      await toggleTaskDone(taskId, user.id);
+      if (isCompletion) {
+        handleToast(
+          'Habit completed ✓',
+          'success',
+          async () => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            useTaskStore.setState((s) => ({
+              todayLog: { ...s.todayLog, [taskId]: false },
+              streaks: { ...s.streaks, [taskId]: streak },
+              tasks: s.tasks.map((t) =>
+                t.id === taskId ? { ...t, streak } : t
+              ),
+            }));
+            await supabase
+              .from('task_completions')
+              .upsert(
+                { user_id: user.id, task_id: taskId, date: todayStr, completed: false },
+                { onConflict: 'user_id,task_id,date' }
+              );
+            await supabase
+              .from('tasks')
+              .update({ streak })
+              .eq('id', taskId)
+              .eq('user_id', user.id);
+          },
+          'UNDO'
+        );
+      }
+    } catch {
+      handleToast('Failed to update habit', 'error');
     }
+  };
 
-    setToast({ message, variant, action, actionLabel })
-    setToastExiting(false)
-    
-    // Auto-dismiss after 3 seconds if there's an action (undo), 2.2 seconds otherwise
-    const duration = action ? 3000 : 2200
-    undoTimerRef.current = window.setTimeout(() => {
-      dismissToast()
-    }, duration)
-  }
-
-  useEffect(() => {
-    // Initialize today's tasks and check for gym
-    if (!user) return
-    const todayTasks = getTodayTasks()
-    const hasGymTask = todayTasks.some((t) => t.type === 'gym')
-
-    if (hasGymTask) {
-      initTodayWorkout(user.id)
+  const handleDelete = async () => {
+    if (!user || !showDeleteConfirm || deleting) return;
+    setDeleting(true);
+    const success = await removeTask(showDeleteConfirm, user.id);
+    setDeleting(false);
+    setShowDeleteConfirm(null);
+    if (success) {
+      handleToast('Habit deleted', 'success');
+    } else {
+      handleToast('Failed to delete habit', 'error');
     }
-  }, [user, getTodayTasks, initTodayWorkout]);
+  };
 
-  const completionPercent = getCompletionPercent();
-  
-  // Calculate completed and total today's habits
-  const todayTasks = getTodayTasks()
-  const completedCount = todayTasks.filter((t) => todayLog[t.id]).length
-  const totalCount = todayTasks.length
+  const todayStr = formatDate().toUpperCase();
 
   return (
-    <div className="min-h-screen bg-bg-primary pb-20 page-enter">
-      {/* Header Section */}
-      <div className="px-4 py-5 mb-4">
-        <h1 className="font-display font-semibold text-2xl text-white">
-          {getGreeting()}{user?.name ? `, ${user.name}` : ''}
-        </h1>
-        <p className="text-text-secondary text-xs mt-1">{formatDate()}</p>
+    <div className="bg-background min-h-screen pb-32">
+      {/* Fixed header */}
+      <div className="fixed top-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-sm max-w-md mx-auto">
+        <div className="flex items-center justify-between px-container-padding py-4">
+          <div className="w-10 h-10 rounded-full ring-2 ring-primary/10 flex items-center justify-center bg-primary/10 text-primary overflow-hidden">
+            {user?.name ? (
+              <span className="font-label-md text-label-md text-primary">
+                {user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+              </span>
+            ) : (
+              <span className="material-symbols-outlined text-[20px]">person</span>
+            )}
+          </div>
+          <button className="text-primary p-1">
+            <span className="material-symbols-outlined">notifications</span>
+          </button>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-4 space-y-3">
-        {/* Blocker Banner */}
-        <BlockerBanner />
-
-        {/* Progress Bar */}
-        <ProgressBar percent={completionPercent} completed={completedCount} total={totalCount} />
-
-        {/* Stats Row */}
-        <StatsRow />
-
-        {/* Today's Routine Label */}
-        <div className="pt-1">
-          <h2 className="font-display font-semibold text-lg text-white mb-3 mt-5">
-            Today's Routine
-          </h2>
+      {/* Main content */}
+      <div className="max-w-md mx-auto pt-24 px-container-padding space-y-stack-gap-lg">
+        {/* Greeting Section */}
+        <div className="space-y-3">
+          <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest opacity-60">
+            {todayStr}
+          </p>
+          <h1 className="font-display-lg-mobile text-display-lg-mobile text-on-surface font-semibold">
+            {getGreeting()}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
+          </h1>
+          <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm">
+            {completedCount}/{totalCount} habits done
+          </span>
         </div>
 
-        {/* Task List */}
-        <TaskList onToast={handleToast} />
+        {/* Daily Rituals Card */}
+        <div className="bg-surface-container-low p-6 rounded-[24px] card-shadow space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-headline-sm text-headline-sm text-on-surface">Daily Rituals</h2>
+            <button onClick={() => setShowAddTask(true)} className="opacity-40 text-on-surface hover:opacity-100 transition-opacity">
+              <span className="material-symbols-outlined">more_horiz</span>
+            </button>
+          </div>
 
-        {/* Nutrition Summary Card */}
-        <NutritionSummaryCard />
+          {todayTasks.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <span className="material-symbols-outlined text-[48px] text-on-surface-variant/30 mb-3">add_task</span>
+              <p className="font-body-md text-body-md text-on-surface-variant">No habits yet</p>
+              <button
+                onClick={() => setShowAddTask(true)}
+                className="mt-3 font-label-md text-label-md text-primary hover:underline"
+              >
+                Create your first habit
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {todayTasks.map((task) => {
+                const isDone = todayLog[task.id] || false;
+                const streak = streaks[task.id] ?? task.streak ?? 0;
+
+                return (
+                  <div key={task.id} className="relative">
+                    <div
+                      className="flex items-center justify-between cursor-pointer transition-all duration-300"
+                      onClick={() => {
+                        setHabitMenu(null);
+                        handleToggle(task.id, isDone, streak);
+                      }}
+                    >
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-xl flex-shrink-0 ${
+                          isDone ? 'bg-primary/10 text-primary' : 'bg-surface-variant text-on-surface-variant'
+                        }`}>
+                          <span
+                            className="material-symbols-outlined text-[22px]"
+                            style={isDone ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                          >
+                            {task.type === 'gym' ? 'fitness_center' :
+                             task.type === 'study' ? 'menu_book' :
+                             task.type === 'water' ? 'water_drop' :
+                             task.type === 'sleep' ? 'bedtime' :
+                             task.type === 'cardio' ? 'directions_run' :
+                             task.type === 'steps' ? 'directions_walk' :
+                             'star'}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`font-label-md text-label-md text-on-surface truncate ${
+                            isDone ? 'line-through opacity-50' : ''
+                          }`}>
+                            {task.name}
+                          </p>
+                          <p className={`font-label-sm text-label-sm ${
+                            isDone ? 'text-primary' : 'text-on-surface-variant opacity-60'
+                          }`}>
+                            {isDone ? `${streak}d streak` : 'Ready to start'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                        isDone
+                          ? 'border-primary bg-primary'
+                          : 'border-outline-variant hover:border-primary'
+                      }`}>
+                        {isDone && (
+                          <span className="material-symbols-outlined text-[16px] text-white">check</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Three-dot menu */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHabitMenu(habitMenu?.taskId === task.id ? null : { taskId: task.id, x: e.clientX, y: e.clientY });
+                      }}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-primary transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">more_horiz</span>
+                    </button>
+
+                    {/* Context menu */}
+                    {habitMenu?.taskId === task.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setHabitMenu(null)} />
+                        <div
+                          className="absolute right-0 top-8 z-20 w-40 overflow-hidden rounded-xl bg-surface-container-low shadow-sheet border border-surface-variant"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => {
+                              setHabitMenu(null);
+                              setEditingTask(task);
+                              setShowEditModal(true);
+                            }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-on-surface transition-colors hover:bg-surface-container"
+                          >
+                            <span className="material-symbols-outlined text-[16px] text-on-surface-variant">edit</span>
+                            Edit Habit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setHabitMenu(null);
+                              setShowDeleteConfirm(task.id);
+                            }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-error transition-colors hover:bg-error-container"
+                          >
+                            <span className="material-symbols-outlined text-[16px] text-error">delete</span>
+                            Delete Habit
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Nutrition Card */}
+        <button
+          onClick={() => navigate('/gym?s=nutrition')}
+          className="w-full bg-surface-container-low p-6 rounded-[24px] card-shadow space-y-4 text-left"
+        >
+          <div className="flex items-center justify-between">
+            <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">NUTRITION</p>
+            {kcalGoal > 0 && (
+              <p className="font-label-sm text-label-sm text-primary">{Math.round((totalKcal / kcalGoal) * 100)}% Goal</p>
+            )}
+          </div>
+          {kcalGoal > 0 ? (
+            <>
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-body-md text-body-md text-on-surface">Calories</span>
+                <span className="font-label-md text-label-md text-primary">{totalKcal.toLocaleString()} / {kcalGoal.toLocaleString()} kcal</span>
+              </div>
+              <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${getBarColor(totalKcal, kcalGoal)}`}
+                  style={{ width: `${Math.min((totalKcal / kcalGoal) * 100, 100)}%` }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <p className="font-label-sm text-label-sm text-on-surface-variant mb-1">Protein</p>
+                  <p className="font-headline-sm text-headline-sm text-on-surface">{totalProtein}g</p>
+                  <div className="h-1 bg-background rounded-full overflow-hidden mt-2">
+                    <div
+                      className={`h-full rounded-full ${getBarColor(totalProtein, proteinGoal)}`}
+                      style={{ width: `${Math.min((totalProtein / proteinGoal) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="font-label-sm text-label-sm text-on-surface-variant mb-1">Water</p>
+                  <p className="font-headline-sm text-headline-sm text-on-surface">{waterGlasses}/{waterGoal}</p>
+                  <div className="h-1 bg-background rounded-full overflow-hidden mt-2">
+                    <div
+                      className={`h-full rounded-full ${getBarColor(waterGlasses, waterGoal)}`}
+                      style={{ width: `${Math.min((waterGlasses / waterGoal) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="font-body-md text-body-md text-on-surface-variant">Set up nutrition goals to start tracking</p>
+          )}
+        </button>
+
+        {/* Gym Card */}
+        {gymTask && (
+          <button
+            onClick={() => navigate('/gym')}
+            className="relative overflow-hidden bg-primary p-6 rounded-[24px] card-shadow text-left w-full"
+          >
+            <span className="material-symbols-outlined absolute top-4 right-4 text-[120px] text-on-primary/20 pointer-events-none leading-none">
+              fitness_center
+            </span>
+            <p className="font-label-md text-label-md text-on-primary/70 uppercase tracking-wider mb-2">TODAY'S FOCUS</p>
+            <p className="font-headline-md text-headline-md text-on-primary mb-4">{gymTask.name}</p>
+            <span className="inline-flex items-center gap-2 bg-on-primary text-primary px-6 py-3 rounded-full font-label-md shadow-lg active:scale-95 transition-all">
+              Start Workout
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+            </span>
+          </button>
+        )}
       </div>
 
+      {/* Toast */}
       {toast && (
         <div className={`fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 transition-opacity duration-300 ${toastExiting ? 'opacity-0' : 'opacity-100'}`}>
           <div
-            className={`rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md flex items-center justify-between ${
+            className={`rounded-2xl px-4 py-3 shadow-sheet flex items-center justify-between ${
               toast.variant === 'success'
-                ? 'border-[rgba(168,255,62,0.25)] bg-[#11150F] text-accent-lime'
-                : 'border-[rgba(239,68,68,0.25)] bg-[#1A0F10] text-status-danger'
+                ? 'bg-primary text-on-primary'
+                : 'bg-error-container text-on-error-container'
             }`}
           >
-            <p className="text-sm font-medium">{toast.message}</p>
+            <p className="font-label-md text-label-md">{toast.message}</p>
             {toast.action && toast.actionLabel && (
               <button
                 onClick={() => {
-                  if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-                  toast.action?.()
-                  dismissToast(true)
+                  if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+                  toast.action?.();
+                  dismissToast(true);
                 }}
-                className="ml-4 text-xs font-semibold text-accent-lime hover:opacity-70 transition-opacity active:scale-95 whitespace-nowrap"
+                className="ml-4 font-label-sm text-label-sm underline hover:opacity-70 transition-opacity active:scale-95 whitespace-nowrap"
               >
                 {toast.actionLabel}
               </button>
@@ -152,17 +427,53 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Floating Action Button */}
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(26,26,26,0.4)] backdrop-blur-[4px] px-4 pb-4 sm:items-center sm:pb-0">
+          <div className="w-full max-w-sm bg-surface-container-low rounded-[24px] p-6 shadow-sheet space-y-4">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">Delete habit?</h3>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              This will permanently remove this habit from your routine.
+            </p>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                disabled={deleting}
+                className="px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-label-md hover:bg-surface-container transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-3 rounded-xl bg-error text-on-error font-label-md hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      <EditTaskModal
+        open={showEditModal}
+        task={editingTask}
+        onClose={() => { setShowEditModal(false); setEditingTask(null); }}
+        onToast={handleToast}
+      />
+
+      {/* Floating Add Button */}
       <button
         onClick={() => setShowAddTask(true)}
-        className="fixed bottom-20 right-5 w-14 h-14 rounded-full bg-accent-lime text-black flex items-center justify-center shadow-lg hover:shadow-2xl transition-shadow duration-200 active:scale-95 z-40"
-        title="Add new task"
+        className="fixed bottom-24 right-5 w-14 h-14 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-lg hover:shadow-2xl transition-all active:scale-95 z-40"
+        title="Add new habit"
       >
-        <Plus size={24} className="font-bold" />
+        <span className="material-symbols-outlined text-[28px]">add</span>
       </button>
 
       {/* Add Task Sheet */}
       <AddTaskSheet open={showAddTask} onClose={() => setShowAddTask(false)} />
     </div>
-  )
+  );
 }
