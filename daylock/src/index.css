@@ -69,6 +69,11 @@
   animation: fadeSlideUp 0.25s ease forwards;
 }
 
+.page-exit {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
 .step-exit {
   animation: stepOut 0.2s ease forwards;
 }
@@ -103,4 +108,19 @@
 
 .habit-check-bounce {
   animation: checkBounce 0.3s ease;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fadeSlideIn 0.3s ease forwards;
 }

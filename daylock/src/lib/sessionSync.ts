@@ -36,6 +36,10 @@ export async function syncAuthSession(session: Session): Promise<SessionSyncResu
   useAuthStore.getState().setIsAuthenticated(true)
   useAuthStore.getState().setOnboardingCompleted(onboardingCompleted)
 
+  if (profile?.gym_level) {
+    useGymStore.getState().setGymLevel(profile.gym_level)
+  }
+
   startupLog('syncAuthSession done', { onboardingCompleted, userId: session.user.id })
   return { onboardingCompleted }
 }

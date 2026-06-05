@@ -3,10 +3,21 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useTaskStore } from '../../store/useTaskStore'
+import { useGymStore } from '../../store/useGymStore'
 import { formatTo24Hour, formatTo12Hour, parseTimeToMinutes } from '../../lib/utils'
 
-type Step = 1 | 2 | 3 | 4
+type Step = 1 | 2 | 3 | 4 | 5 | 6
 type Goal = 'cut' | 'bulk' | 'maintain' | null
+type GymLevel = 'beginner' | 'experienced'
+type BeginnerSplitName = 'Push / Pull / Legs' | 'Full Body' | 'Upper / Lower'
+
+interface BeginnerSplitOption {
+  name: BeginnerSplitName
+  days: string
+  description: string
+  schedule: Record<string, string>
+  icon: string
+}
 
 const GOALS: Array<{
   value: Exclude<Goal, null> | 'general'
@@ -17,6 +28,30 @@ const GOALS: Array<{
   { value: 'bulk', title: 'Bulking', description: 'Build muscle and increase mass' },
   { value: 'maintain', title: 'Maintenance', description: 'Stay consistent, keep balance' },
   { value: 'general', title: 'General Fitness', description: 'Feel better, move better' },
+]
+
+const BEGINNER_SPLITS: BeginnerSplitOption[] = [
+  {
+    name: 'Push / Pull / Legs',
+    days: '3 days/week',
+    description: 'Classic beginner split. Build strength evenly.',
+    schedule: { Monday: 'Push', Wednesday: 'Pull', Friday: 'Legs' },
+    icon: 'repeat',
+  },
+  {
+    name: 'Full Body',
+    days: '3 days/week',
+    description: 'Train everything each session. Great for beginners.',
+    schedule: { Monday: 'Full Body', Wednesday: 'Full Body', Friday: 'Full Body' },
+    icon: 'accessibility_new',
+  },
+  {
+    name: 'Upper / Lower',
+    days: '4 days/week',
+    description: 'Balanced upper and lower body focus.',
+    schedule: { Monday: 'Upper', Tuesday: 'Lower', Thursday: 'Upper', Friday: 'Lower' },
+    icon: 'swap_vert',
+  },
 ]
 
 const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -40,17 +75,26 @@ export function OnboardingPage() {
   const setUser = useAuthStore((state) => state.setUser)
   const setOnboardingCompleted = useAuthStore((state) => state.setOnboardingCompleted)
   const loadTasks = useTaskStore((state) => state.loadTasks)
+  const setGymLevel = useGymStore((state) => state.setGymLevel)
+  const loadGymSplit = useGymStore((state) => state.loadGymSplit)
 
   const [step, setStep] = useState<Step>(1)
   const [stepClass, setStepClass] = useState('step-enter')
   const [name, setName] = useState(user?.name || '')
   const [goal, setGoal] = useState<Goal>(null)
+  const [gymLevel, setGymLevelState] = useState<GymLevel | null>(null)
+  const [selectedSplit, setSelectedSplit] = useState<BeginnerSplitName | null>(null)
   const [wakeTime, setWakeTime] = useState('')
   const [sleepTime, setSleepTime] = useState('')
   const [isFinishing, setIsFinishing] = useState(false)
   const [finishError, setFinishError] = useState<string | null>(null)
 
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const isBeginner = gymLevel === 'beginner'
+  const isExperienced = gymLevel === 'experienced'
+
+  const maxStep: Step = isBeginner ? 6 : 5
 
   useEffect(() => {
     if (user?.name) setName(user.name)
@@ -68,8 +112,12 @@ export function OnboardingPage() {
 
   if (!user) return null
 
-  const changeStep = (nextStep: Step) => {
-    if (nextStep === step) return
+  const changeStep = (target: Step) => {
+    if (target === step) return
+    let nextStep = target
+    if (nextStep > step && isExperienced) {
+      if (nextStep === 4) nextStep = 5 as Step
+    }
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
     setStepClass('step-exit')
     transitionTimerRef.current = setTimeout(() => {
@@ -78,26 +126,80 @@ export function OnboardingPage() {
     }, 200)
   }
 
+  const totalSteps = isBeginner ? 6 : 5
+  const stepsBetween = (from: Step, to: Step) => {
+    const arr: Step[] = []
+    for (let i = from; i <= to; i++) arr.push(i as Step)
+    return arr
+  }
+
   const finishOnboarding = async () => {
     if (isFinishing) return
     setIsFinishing(true)
     setFinishError(null)
     try {
+      const updatePayload: Record<string, unknown> = {
+        name,
+        goal: goal ?? null,
+        gym_level: gymLevel,
+        onboarding_completed: true,
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          name,
-          goal: goal ?? null,
-          onboarding_completed: true,
-        })
+        .update(updatePayload)
         .eq('id', user.id)
+
       if (error) {
         setFinishError('Could not save your profile. Please try again.')
         if (import.meta.env.DEV) console.error('Profile update error:', error)
+        setIsFinishing(false)
         return
       }
+
+      // Save beginner split if applicable
+      if (isBeginner && selectedSplit) {
+        const splitOption = BEGINNER_SPLITS.find((s) => s.name === selectedSplit)
+        if (splitOption) {
+          const splitInserts = Object.entries(splitOption.schedule).map(([day, splitName]) => ({
+            user_id: user.id,
+            day_name: day,
+            split_name: splitName,
+          }))
+
+          // Set rest days to Rest
+          const restDays = ALL_DAYS.filter((d) => !splitOption.schedule[d])
+          restDays.forEach((day) => {
+            splitInserts.push({
+              user_id: user.id,
+              day_name: day,
+              split_name: 'Rest',
+            })
+          })
+
+          const { error: splitError } = await supabase
+            .from('gym_splits')
+            .upsert(splitInserts, { onConflict: 'user_id,day_name' })
+
+          if (splitError && import.meta.env.DEV) {
+            console.error('Split save error:', splitError)
+          }
+        }
+      }
+
+      setGymLevel(gymLevel)
       setUser({ ...user, name })
       setOnboardingCompleted(true)
+
+      // Reload gym split after saving
+      if (isBeginner) {
+        try {
+          await loadGymSplit(user.id)
+        } catch (e) {
+          if (import.meta.env.DEV) console.error('Reload split error:', e)
+        }
+      }
+
       try {
         if (wakeTime && sleepTime) {
           const { error: taskError } = await supabase.from('tasks').insert({
@@ -129,6 +231,25 @@ export function OnboardingPage() {
 
   const sleepSummary = getSleepSummary(wakeTime, sleepTime)
 
+  const renderDots = (activeStep: Step) => {
+    const dots = stepsBetween(1 as Step, totalSteps as Step)
+    return (
+      <div className="flex space-x-2">
+        {dots.map((s) => (
+          <div
+            key={s}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              s <= activeStep
+                ? 'bg-primary'
+                : 'bg-outline-variant'
+            }`}
+            style={{ width: s === activeStep ? '24px' : '6px' }}
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 py-8">
       {/* Slide 1: Welcome */}
@@ -152,12 +273,7 @@ export function OnboardingPage() {
               Lock in your habits.{'\n'}Build your best self.
             </p>
           </div>
-          <div className="flex space-x-2">
-            <div className="h-1.5 w-8 rounded-full bg-primary" />
-            <div className="h-1.5 w-1.5 rounded-full bg-outline-variant" />
-            <div className="h-1.5 w-1.5 rounded-full bg-outline-variant" />
-            <div className="h-1.5 w-1.5 rounded-full bg-outline-variant" />
-          </div>
+          {renderDots(1)}
           <div className="w-full space-y-3">
             <button
               onClick={() => changeStep(2)}
@@ -182,7 +298,7 @@ export function OnboardingPage() {
             <button onClick={() => changeStep(1)} className="p-1 text-on-surface hover:text-primary transition-colors">
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">2 OF 4</span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant">2 OF {totalSteps}</span>
           </div>
           <div>
             <h2 className="font-headline-md italic text-headline-md text-on-surface leading-tight">What's your focus?</h2>
@@ -231,14 +347,140 @@ export function OnboardingPage() {
         </div>
       )}
 
-      {/* Slide 3: Sleep Schedule + Name */}
+      {/* Slide 3: Gym Experience */}
       {step === 3 && (
         <div className={`flex flex-col flex-1 w-full max-w-sm space-y-6 ${stepClass}`}>
           <div className="flex items-center justify-between">
             <button onClick={() => changeStep(2)} className="p-1 text-on-surface hover:text-primary transition-colors">
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">3 OF 4</span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant">3 OF {totalSteps}</span>
+          </div>
+          <div>
+            <h2 className="font-headline-md italic text-headline-md text-on-surface leading-tight">
+              Your gym experience?
+            </h2>
+            <p className="font-body-md text-body-md text-on-surface-variant mt-2 mb-8">
+              We'll set things up accordingly.
+            </p>
+          </div>
+          <div className="space-y-4 flex-1">
+            <div
+              onClick={() => setGymLevelState('beginner')}
+              className={`relative rounded-2xl p-6 cursor-pointer border-2 transition-all active:scale-[0.98] ${
+                gymLevel === 'beginner'
+                  ? 'bg-primary-fixed/30 border-primary'
+                  : 'bg-surface-container-low border-transparent card-shadow'
+              }`}
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+                <span className="material-symbols-outlined">emoji_people</span>
+              </div>
+              <p className="font-label-md text-label-md text-on-surface">I'm a Beginner</p>
+              <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">
+                Set up my splits and exercises automatically
+              </p>
+              {gymLevel === 'beginner' && (
+                <div className="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-primary flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-[16px]">check</span>
+                </div>
+              )}
+            </div>
+            <div
+              onClick={() => setGymLevelState('experienced')}
+              className={`relative rounded-2xl p-6 cursor-pointer border-2 transition-all active:scale-[0.98] ${
+                gymLevel === 'experienced'
+                  ? 'bg-primary-fixed/30 border-primary'
+                  : 'bg-surface-container-low border-transparent card-shadow'
+              }`}
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+                <span className="material-symbols-outlined">fitness_center</span>
+              </div>
+              <p className="font-label-md text-label-md text-on-surface">I already train</p>
+              <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">
+                I'll log my own exercises and set my own days
+              </p>
+              {gymLevel === 'experienced' && (
+                <div className="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-primary flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-[16px]">check</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (isBeginner) changeStep(4)
+              else if (isExperienced) changeStep(5)
+            }}
+            disabled={!gymLevel}
+            className="w-full bg-primary text-on-primary py-4 px-8 rounded-full font-label-md shadow-sm active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Continue →
+          </button>
+        </div>
+      )}
+
+      {/* Slide 4: Beginner Split Selection (only for beginners) */}
+      {step === 4 && isBeginner && (
+        <div className={`flex flex-col flex-1 w-full max-w-sm space-y-6 ${stepClass}`}>
+          <div className="flex items-center justify-between">
+            <button onClick={() => changeStep(3)} className="p-1 text-on-surface hover:text-primary transition-colors">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <span className="font-label-sm text-label-sm text-on-surface-variant">4 OF {totalSteps}</span>
+          </div>
+          <div>
+            <h2 className="font-headline-md italic text-headline-md text-on-surface leading-tight">Choose your split</h2>
+            <p className="font-body-md text-body-md text-on-surface-variant mt-2 mb-8">
+              We'll fill your workout plan automatically.
+            </p>
+          </div>
+          <div className="space-y-4 flex-1">
+            {BEGINNER_SPLITS.map((split) => (
+              <div
+                key={split.name}
+                onClick={() => setSelectedSplit(split.name)}
+                className={`relative rounded-2xl p-6 cursor-pointer border-2 transition-all active:scale-[0.98] ${
+                  selectedSplit === split.name
+                    ? 'bg-primary-fixed/30 border-primary'
+                    : 'bg-surface-container-low border-transparent card-shadow'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+                  <span className="material-symbols-outlined">{split.icon}</span>
+                </div>
+                <p className="font-label-md text-label-md text-on-surface">{split.name}</p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">{split.description}</p>
+                <p className="font-label-sm text-label-sm text-primary mt-2">{split.days}</p>
+                {selectedSplit === split.name && (
+                  <div className="absolute top-4 right-4 w-6 h-6 rounded-full border-2 border-primary flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary text-[16px]">check</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => changeStep(5)}
+            disabled={!selectedSplit}
+            className="w-full bg-primary text-on-primary py-4 px-8 rounded-full font-label-md shadow-sm active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Continue →
+          </button>
+        </div>
+      )}
+
+      {/* Slide 4 (experienced) / 5 (beginner): Sleep Schedule */}
+      {(step === 4 || (step === 5 && isBeginner)) && (
+        <div className={`flex flex-col flex-1 w-full max-w-sm space-y-6 ${stepClass}`}>
+          <div className="flex items-center justify-between">
+            <button onClick={() => changeStep(isBeginner ? 4 : 3)} className="p-1 text-on-surface hover:text-primary transition-colors">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <span className="font-label-sm text-label-sm text-on-surface-variant">
+              {isBeginner ? '5' : '4'} OF {totalSteps}
+            </span>
           </div>
           <div>
             <h2 className="font-headline-md italic text-headline-md text-on-surface leading-tight">Your sleep rhythm</h2>
@@ -277,13 +519,13 @@ export function OnboardingPage() {
             )}
           </div>
           <button
-            onClick={() => changeStep(4)}
+            onClick={() => changeStep(isBeginner ? 6 : 5)}
             className="w-full bg-primary text-on-primary py-4 px-8 rounded-full font-label-md shadow-sm active:scale-[0.98] transition-all"
           >
             Continue →
           </button>
           <button
-            onClick={() => changeStep(4)}
+            onClick={() => changeStep(isBeginner ? 6 : 5)}
             className="w-full font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors py-1"
           >
             Skip for now
@@ -291,14 +533,16 @@ export function OnboardingPage() {
         </div>
       )}
 
-      {/* Slide 4: Name + Finish */}
-      {step === 4 && (
+      {/* Slide 5 (experienced) / 6 (beginner): Name + Finish */}
+      {(step === 5 || step === 6) && (
         <div className={`flex flex-col flex-1 w-full max-w-sm space-y-6 ${stepClass}`}>
           <div className="flex items-center justify-between">
-            <button onClick={() => changeStep(3)} className="p-1 text-on-surface hover:text-primary transition-colors">
+            <button onClick={() => changeStep(isBeginner ? 5 : 4)} className="p-1 text-on-surface hover:text-primary transition-colors">
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">4 OF 4</span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant">
+              {isBeginner ? '6' : '5'} OF {totalSteps}
+            </span>
           </div>
           <div>
             <h2 className="font-headline-md italic text-headline-md text-on-surface leading-tight">A few details</h2>
@@ -320,6 +564,8 @@ export function OnboardingPage() {
               <p className="font-label-sm text-label-sm text-on-surface-variant mb-1">Based on your inputs:</p>
               <p className="font-label-md text-label-md text-on-surface">
                 {goal ? `${goal.charAt(0).toUpperCase() + goal.slice(1)} focus` : 'General fitness'}
+                {gymLevel === 'beginner' ? ' · Beginner plan' : gymLevel === 'experienced' ? ' · Experienced' : ''}
+                {selectedSplit ? ` · ${selectedSplit}` : ''}
                 {wakeTime && sleepTime ? ` · Sleep schedule set` : ''}
               </p>
               <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70 mt-1">

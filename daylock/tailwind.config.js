@@ -101,6 +101,25 @@ export default {
         'card': '0 10px 40px -10px rgba(26, 26, 26, 0.05)',
         'sheet': '0 -8px 40px rgba(26, 26, 26, 0.12)',
       },
+      animation: {
+        'in': 'fadeSlideIn 0.3s ease forwards',
+        'fade-in': 'fadeIn 0.2s ease forwards',
+        'slide-in-from-bottom-2': 'slideInFromBottom 0.3s ease forwards',
+      },
+      keyframes: {
+        fadeSlideIn: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideInFromBottom: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
     },
   },
   plugins: [],

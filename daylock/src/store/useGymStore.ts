@@ -32,6 +32,46 @@ const DEFAULT_EXERCISES_BY_SPLIT: Record<GymSplit, Omit<Exercise, 'id' | 'sets'>
   Rest: [],
 }
 
+export const BEGINNER_EXERCISES: Record<string, { name: string; muscle: string }[]> = {
+  Push: [
+    { name: 'Bench Press', muscle: 'Chest' },
+    { name: 'Overhead Press', muscle: 'Shoulders' },
+    { name: 'Tricep Dips', muscle: 'Triceps' },
+    { name: 'Lateral Raises', muscle: 'Shoulders' },
+  ],
+  Pull: [
+    { name: 'Pull Ups', muscle: 'Back' },
+    { name: 'Barbell Row', muscle: 'Back' },
+    { name: 'Face Pulls', muscle: 'Rear Delts' },
+    { name: 'Bicep Curls', muscle: 'Biceps' },
+  ],
+  Legs: [
+    { name: 'Squats', muscle: 'Quads' },
+    { name: 'Romanian Deadlift', muscle: 'Hamstrings' },
+    { name: 'Leg Press', muscle: 'Quads' },
+    { name: 'Calf Raises', muscle: 'Calves' },
+  ],
+  'Full Body': [
+    { name: 'Squats', muscle: 'Quads' },
+    { name: 'Bench Press', muscle: 'Chest' },
+    { name: 'Barbell Row', muscle: 'Back' },
+    { name: 'Overhead Press', muscle: 'Shoulders' },
+    { name: 'Romanian Deadlift', muscle: 'Hamstrings' },
+  ],
+  Upper: [
+    { name: 'Bench Press', muscle: 'Chest' },
+    { name: 'Barbell Row', muscle: 'Back' },
+    { name: 'Overhead Press', muscle: 'Shoulders' },
+    { name: 'Pull Ups', muscle: 'Back' },
+  ],
+  Lower: [
+    { name: 'Squats', muscle: 'Quads' },
+    { name: 'Romanian Deadlift', muscle: 'Hamstrings' },
+    { name: 'Leg Press', muscle: 'Quads' },
+    { name: 'Calf Raises', muscle: 'Calves' },
+  ],
+}
+
 const DEFAULT_WEEKLY_SPLIT: WeeklySplit = {
   Sunday: 'Rest',
   Monday: 'Push',
@@ -48,17 +88,22 @@ interface GymState {
   workoutHistory: WorkoutLog[]
   isLoading: boolean
   userId: string | null
+  gymLevel: string | null
   loadGymSplit: (userId: string) => Promise<void>
   updateWeeklySplit: (day: string, split: GymSplit, userId: string) => Promise<void>
   loadTodayWorkout: (userId: string) => Promise<void>
   initTodayWorkout: (userId: string) => Promise<void>
   updateSet: (exerciseId: string, setId: string, data: Partial<Set>) => void
   addSet: (exerciseId: string) => void
+  removeSet: (exerciseId: string, setId: string) => void
   addExercise: (name: string, muscleGroup: string) => void
+  removeExercise: (exerciseId: string) => void
+  renameExercise: (exerciseId: string, name: string) => void
   completeWorkout: (userId: string) => Promise<void>
   getTodaySplit: () => GymSplit
   isWorkoutComplete: () => boolean
   flushPendingGymSave: () => Promise<void>
+  setGymLevel: (level: string | null) => void
   _saveWorkoutDebounced: () => Promise<void>
 }
 
@@ -70,6 +115,7 @@ export const useGymStore = create<GymState>((set, get) => ({
   workoutHistory: [] as WorkoutLog[],
   isLoading: false,
   userId: null,
+  gymLevel: null,
 
   loadGymSplit: async (userId: string) => {
     try {
@@ -120,7 +166,6 @@ export const useGymStore = create<GymState>((set, get) => ({
 
   updateWeeklySplit: async (day: string, split: GymSplit, userId: string) => {
     try {
-      // Update local state immediately
       set((state) => ({
         weeklySplit: {
           ...state.weeklySplit,
@@ -128,7 +173,6 @@ export const useGymStore = create<GymState>((set, get) => ({
         },
       }))
 
-      // Sync to database
       await supabase.from('gym_splits').upsert(
         {
           user_id: userId,
@@ -196,17 +240,31 @@ export const useGymStore = create<GymState>((set, get) => ({
 
       let exercises: Exercise[] = []
       if (splitName !== 'Rest') {
-        const defaultExercises = DEFAULT_EXERCISES_BY_SPLIT[splitName as GymSplit] || []
-        exercises = defaultExercises.map((ex: any) => ({
-          id: crypto.randomUUID(),
-          name: ex.name,
-          muscleGroup: ex.muscleGroup,
-          sets: [
-            { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
-            { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
-            { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
-          ],
-        }))
+        if (state.gymLevel === 'beginner') {
+          const beginnerExs = BEGINNER_EXERCISES[splitName] || []
+          exercises = beginnerExs.map((ex) => ({
+            id: crypto.randomUUID(),
+            name: ex.name,
+            muscleGroup: ex.muscle,
+            sets: [
+              { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
+              { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
+              { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
+            ],
+          }))
+        } else {
+          const defaultExercises = DEFAULT_EXERCISES_BY_SPLIT[splitName as GymSplit] || []
+          exercises = defaultExercises.map((ex) => ({
+            id: crypto.randomUUID(),
+            name: ex.name,
+            muscleGroup: ex.muscleGroup,
+            sets: [
+              { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
+              { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
+              { id: crypto.randomUUID(), weight: 0, reps: 0, done: false },
+            ],
+          }))
+        }
       }
 
       const isoDate = new Date().toISOString().split('T')[0]
@@ -280,7 +338,6 @@ export const useGymStore = create<GymState>((set, get) => ({
       }
     })
 
-    // Debounce DB save
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       get()._saveWorkoutDebounced()
@@ -314,7 +371,27 @@ export const useGymStore = create<GymState>((set, get) => ({
       }
     })
 
-    // Debounce DB save
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      get()._saveWorkoutDebounced()
+    }, 1000)
+  },
+
+  removeSet: (exerciseId: string, setId: string) => {
+    set((state) => {
+      if (!state.todayWorkout) return state
+      return {
+        todayWorkout: {
+          ...state.todayWorkout,
+          exercises: state.todayWorkout.exercises.map((ex) =>
+            ex.id === exerciseId
+              ? { ...ex, sets: ex.sets.filter((s) => s.id !== setId) }
+              : ex
+          ),
+        },
+      }
+    })
+
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       get()._saveWorkoutDebounced()
@@ -344,7 +421,42 @@ export const useGymStore = create<GymState>((set, get) => ({
       }
     })
 
-    // Debounce DB save
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      get()._saveWorkoutDebounced()
+    }, 1000)
+  },
+
+  removeExercise: (exerciseId: string) => {
+    set((state) => {
+      if (!state.todayWorkout) return state
+      return {
+        todayWorkout: {
+          ...state.todayWorkout,
+          exercises: state.todayWorkout.exercises.filter((ex) => ex.id !== exerciseId),
+        },
+      }
+    })
+
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      get()._saveWorkoutDebounced()
+    }, 1000)
+  },
+
+  renameExercise: (exerciseId: string, name: string) => {
+    set((state) => {
+      if (!state.todayWorkout) return state
+      return {
+        todayWorkout: {
+          ...state.todayWorkout,
+          exercises: state.todayWorkout.exercises.map((ex) =>
+            ex.id === exerciseId ? { ...ex, name } : ex
+          ),
+        },
+      }
+    })
+
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       get()._saveWorkoutDebounced()
@@ -356,7 +468,6 @@ export const useGymStore = create<GymState>((set, get) => ({
       const state = get()
       if (!state.todayWorkout) return
 
-      // Update local state
       set((s) => ({
         todayWorkout: s.todayWorkout
           ? {
@@ -366,7 +477,6 @@ export const useGymStore = create<GymState>((set, get) => ({
           : null,
       }))
 
-      // Sync to database
       const { error } = await supabase
         .from('workout_logs')
         .update({ completed: true })
@@ -405,6 +515,10 @@ export const useGymStore = create<GymState>((set, get) => ({
       debounceTimer = null
     }
     await get()._saveWorkoutDebounced()
+  },
+
+  setGymLevel: (level: string | null) => {
+    set({ gymLevel: level })
   },
 
   _saveWorkoutDebounced: async () => {

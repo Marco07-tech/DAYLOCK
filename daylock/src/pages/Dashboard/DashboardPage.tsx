@@ -37,6 +37,21 @@ type HabitMenuState = {
   y: number;
 } | null;
 
+function SkeletonHabit() {
+  return (
+    <div className="flex items-center justify-between py-2 animate-pulse">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-surface-container-high" />
+        <div>
+          <div className="h-3 w-28 rounded-full bg-surface-container-high mb-2" />
+          <div className="h-2.5 w-16 rounded-full bg-surface-container-high" />
+        </div>
+      </div>
+      <div className="w-6 h-6 rounded-full bg-surface-container-high" />
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const navigate = useNavigate();
   const [showAddTask, setShowAddTask] = useState(false);
@@ -47,6 +62,8 @@ export function DashboardPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [habitMenu, setHabitMenu] = useState<HabitMenuState>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [justChecked, setJustChecked] = useState<string | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -56,6 +73,7 @@ export function DashboardPage() {
   const toggleTaskDone = useTaskStore((state) => state.toggleTaskDone);
   const removeTask = useTaskStore((state) => state.removeTask);
   const streaks = useTaskStore((state) => state.streaks);
+  const tasks = useTaskStore((state) => state.tasks);
   const initTodayWorkout = useGymStore((state) => state.initTodayWorkout);
   const todayNutritionLog = useNutritionStore((state) => state.todayLog);
   const getTotalKcal = useNutritionStore((state) => state.getTotalKcal);
@@ -69,6 +87,12 @@ export function DashboardPage() {
       initTodayWorkout(user.id);
     }
   }, [user, getTodayTasks, initTodayWorkout]);
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      setIsLoading(false);
+    }
+  }, [tasks]);
 
   useEffect(() => {
     return () => {
@@ -119,6 +143,10 @@ export function DashboardPage() {
   const handleToggle = async (taskId: string, isDone: boolean, streak: number) => {
     if (!user) return;
     const isCompletion = !isDone;
+
+    setJustChecked(taskId);
+    setTimeout(() => setJustChecked(null), 600);
+
     try {
       await toggleTaskDone(taskId, user.id);
       if (isCompletion) {
@@ -190,7 +218,7 @@ export function DashboardPage() {
       </div>
 
       {/* Main content */}
-      <div className="max-w-md mx-auto pt-24 px-container-padding space-y-stack-gap-lg">
+      <div className="max-w-md mx-auto pt-24 px-container-padding space-y-stack-gap-lg animate-in">
         {/* Greeting Section */}
         <div className="space-y-3">
           <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest opacity-60">
@@ -213,7 +241,13 @@ export function DashboardPage() {
             </button>
           </div>
 
-          {todayTasks.length === 0 ? (
+          {isLoading && tasks.length === 0 ? (
+            <div className="space-y-4">
+              <SkeletonHabit />
+              <SkeletonHabit />
+              <SkeletonHabit />
+            </div>
+          ) : todayTasks.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <span className="material-symbols-outlined text-[48px] text-on-surface-variant/30 mb-3">add_task</span>
               <p className="font-body-md text-body-md text-on-surface-variant">No habits yet</p>
@@ -226,12 +260,16 @@ export function DashboardPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {todayTasks.map((task) => {
+              {todayTasks.map((task, index) => {
                 const isDone = todayLog[task.id] || false;
                 const streak = streaks[task.id] ?? task.streak ?? 0;
 
                 return (
-                  <div key={task.id} className="relative">
+                  <div
+                    key={task.id}
+                    className="relative animate-in"
+                    style={{ animationDelay: `${index * 60}ms`, opacity: 0 }}
+                  >
                     <div
                       className="flex items-center justify-between cursor-pointer transition-all duration-300"
                       onClick={() => {
@@ -269,15 +307,19 @@ export function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <div key={String(isDone)} className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
-                        isDone
-                          ? 'border-primary bg-primary habit-check-bounce'
-                          : 'border-outline-variant hover:border-primary'
-                      }`}>
+                      <button
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
+                          isDone
+                            ? 'bg-primary border-primary scale-110'
+                            : 'border-outline-variant hover:border-primary'
+                        } ${justChecked === task.id ? 'scale-125' : ''}`}
+                      >
                         {isDone && (
-                          <span className="material-symbols-outlined text-[16px] text-on-primary">check</span>
+                          <span className="material-symbols-outlined text-white text-[14px] animate-in">
+                            check
+                          </span>
                         )}
-                      </div>
+                      </button>
                     </div>
 
                     {/* Three-dot menu */}

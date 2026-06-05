@@ -22,6 +22,7 @@ export function GymPage() {
   const initTodayWorkout = useGymStore((state) => state.initTodayWorkout)
   const completeWorkout = useGymStore((state) => state.completeWorkout)
   const isWorkoutComplete = useGymStore((state) => state.isWorkoutComplete)
+  const gymLevel = useGymStore((state) => state.gymLevel)
 
   const toggleTaskDone = useTaskStore((state) => state.toggleTaskDone)
   const todayLog = useTaskStore((state) => state.todayLog)
@@ -40,8 +41,7 @@ export function GymPage() {
     if (todayWorkout === null && user) {
       initTodayWorkout(user.id)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps — initTodayWorkout is a stable Zustand action reference
-  }, [todayWorkout, user])
+  }, [todayWorkout, user, initTodayWorkout])
 
   const handleCompleteWorkout = async () => {
     if (!user) return
@@ -69,14 +69,14 @@ export function GymPage() {
         <div className="flex items-center justify-between max-w-[430px] mx-auto">
           <button
             onClick={() => navigate(-1)}
-            className="text-on-surface hover:text-primary-fixed-dim transition-colors p-1"
+            className="text-on-surface hover:text-primary transition-colors p-1"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <h1 className="font-headline-md text-on-surface flex-1 text-center">Gym</h1>
-          <span className="material-symbols-outlined text-primary-fixed-dim">fitness_center</span>
+          <span className="material-symbols-outlined text-primary">fitness_center</span>
         </div>
-        <p className="text-center text-primary-fixed-dim font-label-sm mt-1">
+        <p className="text-center text-primary font-label-sm mt-1">
           {todaySplit} {todaySplit !== 'Rest' && 'Day'}
         </p>
       </div>
@@ -89,8 +89,8 @@ export function GymPage() {
             className={cn(
               'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
               activeSection === 'workout'
-                ? 'bg-primary-fixed-dim text-on-primary-fixed'
-                : 'bg-surface-container border border-outline-variant text-on-secondary-container hover:border-primary-fixed-dim'
+                ? 'bg-primary text-on-primary'
+                : 'bg-surface-container border border-outline-variant text-on-surface-variant hover:border-primary'
             )}
           >
             <div className="flex items-center justify-center gap-1.5">
@@ -103,8 +103,8 @@ export function GymPage() {
             className={cn(
               'flex-1 h-10 rounded-xl font-semibold text-sm transition-all duration-150',
               activeSection === 'nutrition'
-                ? 'bg-primary-fixed-dim text-on-primary-fixed'
-                : 'bg-surface-container border border-outline-variant text-on-secondary-container hover:border-primary-fixed-dim'
+                ? 'bg-primary text-on-primary'
+                : 'bg-surface-container border border-outline-variant text-on-surface-variant hover:border-primary'
             )}
           >
             <div className="flex items-center justify-center gap-1.5">
@@ -126,8 +126,8 @@ export function GymPage() {
                 className={cn(
                   'px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-150',
                   activeTab === 'logger'
-                    ? 'bg-primary-fixed-dim text-on-primary-fixed'
-                    : 'text-on-secondary-container hover:text-on-surface'
+                    ? 'bg-primary text-on-primary'
+                    : 'text-on-surface-variant hover:text-on-surface'
                 )}
               >
                 Workout Logger
@@ -137,8 +137,8 @@ export function GymPage() {
                 className={cn(
                   'px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-150',
                   activeTab === 'split'
-                    ? 'bg-primary-fixed-dim text-on-primary-fixed'
-                    : 'text-on-secondary-container hover:text-on-surface'
+                    ? 'bg-primary text-on-primary'
+                    : 'text-on-surface-variant hover:text-on-surface'
                 )}
               >
                 My Split
@@ -163,7 +163,7 @@ export function GymPage() {
                   </div>
                   <div className="h-1 bg-surface-container-lowest rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary-fixed-dim rounded-full transition-all duration-500"
+                      className="h-full bg-primary rounded-full transition-all duration-500"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -171,7 +171,7 @@ export function GymPage() {
                   {isWorkoutComplete() && (
                     <button
                       onClick={handleCompleteWorkout}
-                      className="w-full py-4 rounded-xl bg-primary-fixed-dim text-on-primary-fixed font-headline-md active:scale-95 transition-all shadow-[0_10px_40px_rgba(171,214,0,0.15)] flex items-center justify-center gap-2"
+                      className="w-full py-4 rounded-xl bg-primary text-on-primary font-headline-md active:scale-95 transition-all shadow-[0_8px_24px_rgba(81,96,81,0.2)] flex items-center justify-center gap-2"
                     >
                       <span className="material-symbols-outlined">check_circle</span>
                       Complete Workout

@@ -9,6 +9,7 @@ export type ProfileRecord = {
   created_at?: string
   onboarding_completed?: boolean
   goal?: string | null
+  gym_level?: string | null
 }
 
 export function displayNameFromAuthUser(user: SupabaseUser, fallback = 'User'): string {
@@ -22,7 +23,7 @@ export function displayNameFromAuthUser(user: SupabaseUser, fallback = 'User'): 
 
 export async function fetchProfile(userId: string): Promise<ProfileRecord | null> {
   const { data, error } = await traceAwait('fetchProfile', () =>
-    supabase.from('profiles').select('id, name, goal, onboarding_completed, created_at').eq('id', userId).maybeSingle()
+    supabase.from('profiles').select('id, name, goal, gym_level, onboarding_completed, created_at').eq('id', userId).maybeSingle()
   )
 
   if (error) {
