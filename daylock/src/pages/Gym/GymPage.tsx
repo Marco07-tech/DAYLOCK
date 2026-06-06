@@ -22,8 +22,6 @@ export function GymPage() {
   const initTodayWorkout = useGymStore((state) => state.initTodayWorkout)
   const completeWorkout = useGymStore((state) => state.completeWorkout)
   const isWorkoutComplete = useGymStore((state) => state.isWorkoutComplete)
-  const gymLevel = useGymStore((state) => state.gymLevel)
-
   const toggleTaskDone = useTaskStore((state) => state.toggleTaskDone)
   const todayLog = useTaskStore((state) => state.todayLog)
   const tasks = useTaskStore((state) => state.tasks)

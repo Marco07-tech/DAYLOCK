@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useGymStore } from '../../../store/useGymStore';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { getDayName } from '../../../lib/utils';
@@ -7,14 +7,6 @@ import type { GymSplit } from '../../../types';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SPLITS: GymSplit[] = ['Push', 'Pull', 'Legs', 'Full Body', 'Rest'];
-
-const SPLIT_ICONS: Record<GymSplit, string> = {
-  Push: 'fitness_center',
-  Pull: 'fitness_center',
-  Legs: 'fitness_center',
-  'Full Body': 'fitness_center',
-  Rest: 'bedtime',
-};
 
 function getDayStatus(day: string, today: string) {
   const dayIndex = DAYS.indexOf(day);

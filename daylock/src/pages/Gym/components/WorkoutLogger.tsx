@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useGymStore } from '../../../store/useGymStore';
 import { cn } from '../../../lib/utils';
 
@@ -9,10 +9,9 @@ function formatTime(totalSec: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function ExerciseSection({ exercise, index }: { exercise: { id: string; name: string; muscleGroup: string; sets: { id: string; weight: number; reps: number; done: boolean }[] }; index: number }) {
+function ExerciseSection({ exercise }: { exercise: { id: string; name: string; muscleGroup: string; sets: { id: string; weight: number; reps: number; done: boolean }[] } }) {
   const updateSet = useGymStore((state) => state.updateSet);
   const addSet = useGymStore((state) => state.addSet);
-  const removeSet = useGymStore((state) => state.removeSet);
   const removeExercise = useGymStore((state) => state.removeExercise);
   const renameExercise = useGymStore((state) => state.renameExercise);
 

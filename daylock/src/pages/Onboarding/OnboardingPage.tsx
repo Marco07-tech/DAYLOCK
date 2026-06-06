@@ -94,8 +94,6 @@ export function OnboardingPage() {
   const isBeginner = gymLevel === 'beginner'
   const isExperienced = gymLevel === 'experienced'
 
-  const maxStep: Step = isBeginner ? 6 : 5
-
   useEffect(() => {
     if (user?.name) setName(user.name)
   }, [user?.name])
