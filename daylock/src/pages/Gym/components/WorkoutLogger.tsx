@@ -264,7 +264,7 @@ export function WorkoutLogger() {
 
       {/* Exercise list */}
       {todayWorkout?.exercises.map((exercise, idx) => (
-        <ExerciseSection key={exercise.id} exercise={exercise} index={idx} />
+        <ExerciseSection key={exercise.id} exercise={exercise} />
       ))}
 
       {/* Add Exercise inline form */}
