@@ -52,7 +52,7 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
   isLoading: false,
   timerStart: null,
 
-  loadTodaySession: async (userId) => {
+  loadTodaySession: async (userId: string) => {
     try {
       const today = new Date().toISOString().split('T')[0]
       const { data } = await supabase
@@ -75,7 +75,7 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
     }
   },
 
-  loadSplit: async (userId) => {
+  loadSplit: async (userId: string) => {
     try {
       const { data } = await supabase
         .from('weekly_split')
@@ -88,7 +88,7 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
     }
   },
 
-  loadRecentSessions: async (userId) => {
+  loadRecentSessions: async (userId: string) => {
     try {
       const { data } = await supabase
         .from('workout_sessions')
@@ -98,7 +98,7 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
         .order('created_at', { ascending: false })
         .limit(10)
       if (data) {
-        set({ sessions: data.map((s) => {
+        set({ sessions: data.map((s: unknown) => {
           const session = s as unknown as WorkoutSession & { workout_sets: WorkoutSet[] }
           return { ...session, sets: session.workout_sets ?? [] }
         }) })
@@ -108,7 +108,7 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
     }
   },
 
-  startWorkout: async (userId, name) => {
+  startWorkout: async (userId: string, name: string) => {
     try {
       const { data } = await supabase
         .from('workout_sessions')
@@ -121,11 +121,11 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
     }
   },
 
-  addExercise: async (userId, exerciseName, muscleGroup) => {
+  addExercise: async (userId: string, exerciseName: string, muscleGroup: string) => {
     try {
       const { activeSession } = get()
       if (!activeSession) return
-      const existingSets = activeSession.sets.filter(s => s.exercise_name === exerciseName)
+      const existingSets = activeSession.sets.filter((s: WorkoutSet) => s.exercise_name === exerciseName)
       const setNumber = existingSets.length + 1
       const { data } = await supabase
         .from('workout_sets')
@@ -140,7 +140,7 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
         .select()
         .single()
       if (data) {
-        set(state => ({
+        set((state: WorkoutState) => ({
           activeSession: state.activeSession
             ? { ...state.activeSession, sets: [...state.activeSession.sets, data as unknown as WorkoutSet] }
             : null
@@ -151,11 +151,11 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
     }
   },
 
-  addSet: async (setData) => {
+  addSet: async (setData: Omit<WorkoutSet, 'id'> & { session_id: string; user_id: string }) => {
     try {
       const { data } = await supabase.from('workout_sets').insert(setData).select().single()
       if (data) {
-        set(state => ({
+        set((state: WorkoutState) => ({
           activeSession: state.activeSession
             ? { ...state.activeSession, sets: [...state.activeSession.sets, data as unknown as WorkoutSet] }
             : null
@@ -166,13 +166,13 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
     }
   },
 
-  updateSet: async (setId, updates) => {
+  updateSet: async (setId: string, updates: Partial<WorkoutSet>) => {
     try {
       await supabase.from('workout_sets').update(updates).eq('id', setId)
-      set(state => ({
+      set((state: WorkoutState) => ({
         activeSession: state.activeSession ? {
           ...state.activeSession,
-          sets: state.activeSession.sets.map(s => s.id === setId ? { ...s, ...updates } : s)
+          sets: state.activeSession.sets.map((s: WorkoutSet) => s.id === setId ? { ...s, ...updates } : s)
         } : null
       }))
     } catch (e) {
@@ -180,25 +180,25 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
     }
   },
 
-  toggleSetDone: (setId) => {
+  toggleSetDone: (setId: string) => {
     const { activeSession } = get()
     if (!activeSession) return
-    const s = activeSession.sets.find(s => s.id === setId)
+    const s = activeSession.sets.find((s: WorkoutSet) => s.id === setId)
     if (!s) return
     const newDone = !s.done
     supabase.from('workout_sets').update({ done: newDone }).eq('id', setId).then()
-    set(state => ({
+    set((state: WorkoutState) => ({
       activeSession: state.activeSession ? {
         ...state.activeSession,
-        sets: state.activeSession.sets.map(s => s.id === setId ? { ...s, done: newDone } : s)
+        sets: state.activeSession.sets.map((s: WorkoutSet) => s.id === setId ? { ...s, done: newDone } : s)
       } : null
     }))
   },
 
-  finishWorkout: async (sessionId, durationMinutes) => {
+  finishWorkout: async (sessionId: string, durationMinutes: number) => {
     try {
       await supabase.from('workout_sessions').update({ completed: true, duration_minutes: durationMinutes }).eq('id', sessionId)
-      set(state => ({
+      set((state: WorkoutState) => ({
         activeSession: null,
         sessions: state.activeSession
           ? [{ ...state.activeSession, completed: true, duration_minutes: durationMinutes }, ...state.sessions]
@@ -209,7 +209,7 @@ export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
     }
   },
 
-  saveSplit: async (userId, split) => {
+  saveSplit: async (userId: string, split: SplitDay[]) => {
     try {
       for (const day of split) {
         await supabase.from('weekly_split').upsert(
