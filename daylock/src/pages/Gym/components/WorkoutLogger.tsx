@@ -263,7 +263,7 @@ export function WorkoutLogger() {
       </div>
 
       {/* Exercise list */}
-      {todayWorkout?.exercises.map((exercise, idx) => (
+      {todayWorkout?.exercises.map((exercise) => (
         <ExerciseSection key={exercise.id} exercise={exercise} />
       ))}
 
