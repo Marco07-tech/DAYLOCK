@@ -45,7 +45,7 @@ interface WorkoutState {
   saveSplit: (userId: string, split: SplitDay[]) => Promise<void>
 }
 
-export const useWorkoutStore = create<WorkoutState>((set, get) => ({
+export const useWorkoutStore = create<WorkoutState>()((set, get) => ({
   activeSession: null,
   sessions: [],
   split: [],
