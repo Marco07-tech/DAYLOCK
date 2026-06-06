@@ -1,103 +1,42 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { getPostAuthPath } from '../../lib/profile'
-import { syncAuthSession, loadUserDataStores } from '../../lib/sessionSync'
 import { useAuthStore } from '../../store/useAuthStore'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
-  const setIsLoading = useAuthStore((state) => state.setIsLoading)
+  const { loadProfile } = useAuthStore()
+  const cancelled = useRef(false)
 
   useEffect(() => {
-    let cancelled = false
-
-    const handleCallback = async () => {
+    cancelled.current = false
+    const handle = async () => {
       try {
-        setIsLoading(true)
-        const urlParams = new URLSearchParams(window.location.search)
-        const code = urlParams.get('code')
-
-        if (code) {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-
-          if (error || !data.session) {
-            if (import.meta.env.DEV) {
-              console.error('Code exchange failed:', error)
-            }
-            if (!cancelled) navigate('/login', { replace: true })
-            return
-          }
-
-          const { onboardingCompleted } = await syncAuthSession(data.session)
-          if (!cancelled) setIsLoading(false)
-          if (!cancelled) void loadUserDataStores(data.session.user.id)
-          if (!cancelled) navigate(getPostAuthPath(onboardingCompleted), { replace: true })
-          return
+        const { data: { session } } = await supabase.auth.getSession()
+        if (cancelled.current) return
+        if (session?.user) {
+          await loadProfile(session.user.id)
+          if (cancelled.current) return
+          const profile = useAuthStore.getState().profile
+          navigate(profile?.onboarding_completed ? '/' : '/onboarding', { replace: true })
+        } else {
+          navigate('/login', { replace: true })
         }
-
-        const hashParams = new URLSearchParams(window.location.hash.slice(1))
-        if (hashParams.get('access_token')) {
-          await new Promise((resolve) => setTimeout(resolve, 500))
-          if (cancelled) return
-          const {
-            data: { session },
-            error,
-          } = await supabase.auth.getSession()
-
-          if (session) {
-            const { onboardingCompleted } = await syncAuthSession(session)
-            if (!cancelled) setIsLoading(false)
-            if (!cancelled) void loadUserDataStores(session.user.id)
-            if (!cancelled) navigate(getPostAuthPath(onboardingCompleted), { replace: true })
-            return
-          }
-
-          if (import.meta.env.DEV && error) {
-            console.error('Session from hash failed:', error)
-          }
-        }
-
-        if (!cancelled) navigate('/login', { replace: true })
-      } catch (err) {
-        if (import.meta.env.DEV) {
-          console.error('Callback error:', err)
-        }
-        if (!cancelled) navigate('/login', { replace: true })
-      } finally {
-        if (!cancelled) setIsLoading(false)
+      } catch (e) {
+        if (import.meta.env.DEV) console.error(e)
+        navigate('/login', { replace: true })
       }
     }
-
-    handleCallback()
-
-    return () => {
-      cancelled = true
-    }
-  }, [navigate, setIsLoading])
+    handle()
+    return () => { cancelled.current = true }
+  }, [navigate, loadProfile])
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center gap-4">
-      <div className="text-[#A8FF3E] text-2xl font-semibold" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-        DayLock
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-ff-accent border-t-transparent rounded-full animate-spin" />
+        <p className="font-label-caps text-label-caps text-ff-muted uppercase tracking-widest">Signing in...</p>
       </div>
-      <div className="flex gap-[6px]">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="w-2 h-2 rounded-full bg-[#A8FF3E]"
-            style={{
-              animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
-            }}
-          />
-        ))}
-      </div>
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.3; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.2); }
-        }
-      `}</style>
     </div>
   )
 }

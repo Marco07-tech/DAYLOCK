@@ -1,147 +1,127 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
-import { fetchProfile } from '../lib/profile'
-import { syncAuthSession, loadUserDataStores } from '../lib/sessionSync'
-import type { User } from '../types/index'
 
-interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  error: string | null
-  onboardingCompleted: boolean | null
-  setUser: (user: User | null) => void
-  setIsAuthenticated: (isAuthenticated: boolean) => void
-  setIsLoading: (isLoading: boolean) => void
-  login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, name: string) => Promise<void>
-  logout: () => Promise<void>
-  checkOnboarding: (userId: string) => Promise<boolean>
-  updateUserName: (name: string) => void
-  setOnboardingCompleted: (completed: boolean | null) => void
-  clearError: () => void
+interface Profile {
+  id: string
+  email: string
+  display_name: string | null
+  avatar_url: string | null
+  calorie_goal: number
+  protein_goal: number
+  water_goal: number
+  body_weight: number | null
+  fitness_goal: 'cutting' | 'bulking' | 'maintenance'
+  gym_level: 'beginner' | 'experienced'
+  onboarding_completed: boolean
 }
 
-export const useAuthStore = create<AuthState>((set) => {
-  return {
-    user: null,
-    isAuthenticated: false,
-    isLoading: true,
-    error: null,
-    onboardingCompleted: null,
+interface AuthState {
+  user: import('@supabase/supabase-js').User | null
+  profile: Profile | null
+  isLoading: boolean
+  isAuthenticated: boolean
+  signInWithGoogle: () => Promise<void>
+  signOut: () => Promise<void>
+  loadProfile: (userId: string) => Promise<void>
+  updateProfile: (updates: Partial<Profile>) => Promise<void>
+  initialize: () => Promise<void>
+}
 
-    setUser: (user: User | null) => {
-      set({ user })
-    },
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  profile: null,
+  isLoading: true,
+  isAuthenticated: false,
 
-    setIsAuthenticated: (isAuthenticated: boolean) => {
-      set({ isAuthenticated })
-    },
-
-    setIsLoading: (isLoading: boolean) => {
-      set({ isLoading })
-    },
-
-    checkOnboarding: async (userId: string) => {
-      const profile = await fetchProfile(userId)
-      return profile?.onboarding_completed ?? false
-    },
-
-    updateUserName: (name: string) => {
-      set((state) =>
-        state.user
-          ? {
-              user: {
-                ...state.user,
-                name,
-              },
-            }
-          : state
-      )
-    },
-
-    setOnboardingCompleted: (completed: boolean | null) => {
-      set({ onboardingCompleted: completed })
-    },
-
-    login: async (email: string, password: string) => {
-      try {
-        set({ isLoading: true, error: null })
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (error) {
-          set({ error: error.message, isLoading: false })
-          return
-        }
-
-        if (!data.session) {
-          set({ error: 'Unable to start session. Please try again.', isLoading: false })
-          return
-        }
-
-        await syncAuthSession(data.session)
-        set({ isLoading: false })
-        void loadUserDataStores(data.session.user.id)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Login failed'
-        set({ error: message, isLoading: false })
+  initialize: async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        set({ user: session.user, isAuthenticated: true })
+        await get().loadProfile(session.user.id)
       }
-    },
+      set({ isLoading: false })
 
-    signup: async (email: string, password: string, name: string) => {
-      try {
-        set({ isLoading: true, error: null })
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { name },
-          },
-        })
-
-        if (error) {
-          set({ error: error.message, isLoading: false })
-          return
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          set({ user: session.user, isAuthenticated: true })
+          await get().loadProfile(session.user.id)
+        } else if (event === 'SIGNED_OUT') {
+          set({ user: null, profile: null, isAuthenticated: false })
         }
+      })
+    } catch (e) {
+      if (import.meta.env.DEV) console.error(e)
+      set({ isLoading: false })
+    }
+  },
 
-        if (!data.user?.id) {
-          set({ isLoading: false })
-          return
+  signInWithGoogle: async () => {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${import.meta.env.VITE_APP_URL ?? window.location.origin}/auth/callback`,
+          queryParams: { access_type: 'offline', prompt: 'consent' }
         }
+      })
+    } catch (e) {
+      if (import.meta.env.DEV) console.error(e)
+    }
+  },
 
-        if (!data.session) {
-          set({
-            error: 'Account created. Check your email to confirm, then sign in.',
-            isLoading: false,
-            isAuthenticated: false,
-          })
-          return
+  signOut: async () => {
+    try {
+      await supabase.auth.signOut()
+      set({ user: null, profile: null, isAuthenticated: false })
+    } catch (e) {
+      if (import.meta.env.DEV) console.error(e)
+    }
+  },
+
+  loadProfile: async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, email, display_name, avatar_url, calorie_goal, protein_goal, water_goal, body_weight, fitness_goal, gym_level, onboarding_completed')
+        .eq('id', userId)
+        .single()
+
+      if (data) {
+        set({ profile: data as unknown as Profile })
+      } else {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const newProfile = {
+            id: userId,
+            email: user.email ?? '',
+            display_name: user.user_metadata?.full_name ?? null,
+            avatar_url: user.user_metadata?.avatar_url ?? null,
+            calorie_goal: 1800,
+            protein_goal: 160,
+            water_goal: 8,
+            body_weight: null,
+            fitness_goal: 'maintenance' as const,
+            gym_level: 'beginner' as const,
+            onboarding_completed: false,
+          }
+          await supabase.from('profiles').insert(newProfile)
+          set({ profile: newProfile })
         }
-
-        await syncAuthSession(data.session)
-        set({ isLoading: false })
-        void loadUserDataStores(data.session.user.id)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Signup failed'
-        set({ error: message, isLoading: false })
       }
-    },
+    } catch (e) {
+      if (import.meta.env.DEV) console.error(e)
+    }
+  },
 
-    logout: async () => {
-      try {
-        await supabase.auth.signOut()
-        set({ user: null, isAuthenticated: false, onboardingCompleted: null, isLoading: false })
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Logout failed'
-        set({ error: message })
-      }
-    },
-
-    clearError: () => {
-      set({ error: null })
-    },
-  }
-})
+  updateProfile: async (updates: Partial<Profile>) => {
+    try {
+      const { profile } = get()
+      if (!profile) return
+      await supabase.from('profiles').update(updates).eq('id', profile.id)
+      set({ profile: { ...profile, ...updates } })
+    } catch (e) {
+      if (import.meta.env.DEV) console.error(e)
+    }
+  },
+}))

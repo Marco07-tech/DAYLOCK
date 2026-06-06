@@ -1,41 +1,38 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom'
 
-const NAV_ITEMS = [
-  { path: '/dashboard', icon: 'home', label: 'Home' },
-  { path: '/gym', icon: 'fitness_center', label: 'Gym' },
-  { path: '/stats', icon: 'bar_chart', label: 'Stats' },
-  { path: '/settings', icon: 'settings', label: 'Settings' },
-];
+const TABS = [
+  { path: '/', label: 'Home', icon: 'home' },
+  { path: '/workout', label: 'Workout', icon: 'exercise' },
+  { path: '/nutrition', label: 'Nutrition', icon: 'restaurant' },
+  { path: '/progress', label: 'Progress', icon: 'insights' },
+  { path: '/profile', label: 'Profile', icon: 'person' },
+]
 
 export function BottomNav() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const location = useLocation()
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 flex justify-around items-center px-4 py-3 bg-surface-container-low shadow-[0_-4px_20px_rgba(26,26,26,0.03)] rounded-t-xl">
-      {NAV_ITEMS.map(({ path, icon, label }) => {
-        const isActive = location.pathname === path;
-        return (
-          <button
-            key={path}
-            onClick={() => navigate(path)}
-              className={`flex flex-col items-center justify-center transition-all w-16 ${
-              isActive
-                ? 'bg-primary-container text-on-primary-container rounded-full px-4 py-1'
-                : 'text-on-surface-variant opacity-60 hover:text-primary'
-            }`}
-            title={label}
-          >
-            <span
-              className="material-symbols-outlined"
-              style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
+    <nav className="fixed bottom-0 w-full z-50 h-[84px] bg-[#0D0D0D] border-t border-ff-border">
+      <div className="flex justify-around items-center px-md h-full pb-safe">
+        {TABS.map((tab) => {
+          const isActive = location.pathname === tab.path
+          return (
+            <Link
+              key={tab.path}
+              to={tab.path}
+              className={`flex flex-col items-center gap-1 active:scale-90 transition-transform ${
+                isActive ? 'text-ff-accent' : 'text-ff-muted'
+              }`}
             >
-              {icon}
-            </span>
-            <span className="font-label-sm text-label-sm">{label}</span>
-          </button>
-        );
-      })}
+              <span className="material-symbols-outlined text-[24px] select-none"
+                style={{ fontVariationSettings: isActive ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
+                {tab.icon}
+              </span>
+              <span className="font-label-caps text-label-caps">{tab.label}</span>
+            </Link>
+          )
+        })}
+      </div>
     </nav>
-  );
+  )
 }

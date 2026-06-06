@@ -1,126 +1,105 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  html {
-    scroll-behavior: smooth;
-  }
+* { box-sizing: border-box; }
 
-  body {
-    background-color: #fcf9f8;
-    color: #1c1b1b;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overscroll-behavior: none;
-  }
-
-  input[type='number']::-webkit-outer-spin-button,
-  input[type='number']::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  input[type='number'] {
-    -moz-appearance: textfield;
-  }
-
-  input:focus,
-  select:focus {
-    outline: none;
-  }
-
-  ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: #fcf9f8;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #c4c8c0;
-    border-radius: 10px;
-  }
+body {
+  background-color: #12131b;
+  color: #e2e1ed;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'Inter', sans-serif;
+  overscroll-behavior: none;
+  margin: 0;
 }
 
-@layer components {
-  .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  }
-  .card-shadow {
-    box-shadow: 0 10px 40px -10px rgba(26, 26, 26, 0.05);
-  }
+.font-display { font-family: 'Space Grotesk', sans-serif; }
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
 }
 
-@keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.ff-card {
+  background: #161616;
+  border: 1px solid #2A2A2A;
+  border-radius: 16px;
 }
+
+.ff-btn-primary {
+  background: #4F6EF7;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+  width: 100%;
+}
+.ff-btn-primary:hover { opacity: 0.9; }
+.ff-btn-primary:active { transform: scale(0.98); }
+
+.ff-btn-secondary {
+  background: #161616;
+  border: 1px solid #2A2A2A;
+  color: #888888;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.ff-pill {
+  background: #1e1f27;
+  border: 1px solid #2A2A2A;
+  color: #888888;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ff-progress-track {
+  height: 6px;
+  background: #2A2A2A;
+  border-radius: 9999px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.ff-progress-fill {
+  height: 100%;
+  background: #4F6EF7;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+.list-separator { border-bottom: 1px solid #2A2A2A; }
 
 .page-enter {
-  animation: fadeSlideUp 0.25s ease forwards;
+  animation: pageIn 0.25s ease forwards;
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.page-exit {
-  opacity: 0;
-  transition: opacity 200ms ease;
-}
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
 
-.step-exit {
-  animation: stepOut 0.2s ease forwards;
-}
-
-.step-enter {
-  animation: stepIn 0.25s ease forwards;
-}
-
-@keyframes stepOut {
-  to {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-}
-
-@keyframes stepIn {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes checkBounce {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
-}
-
-.habit-check-bounce {
-  animation: checkBounce 0.3s ease;
-}
-
-@keyframes fadeSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-in {
-  animation: fadeSlideIn 0.3s ease forwards;
-}
+::-webkit-scrollbar { display: none; }
